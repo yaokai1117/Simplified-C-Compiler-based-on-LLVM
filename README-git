@@ -1,0 +1,67 @@
+             Tips on how to use GIT
+===================================================
+         written by Yu Zhang (clarazhang@gmail.com)
+
+
+1. Useful URLs:
+   http://gitref.org/
+   http://www.kernel.org/pub/software/scm/git/docs/
+   http://blog.csdn.net/csdlbn/article/details/5834002
+
+2. Useful GIT Commands
+
+   - Clone a repository named git-repo
+     git clone git@202.38.75.124:git-repo
+
+   - Configure your git to set some brief alias command names
+     You can edit .gitconfig file in your home directory, 
+     which may contains:
+
+[alias]
+        up = pull
+        st = status
+        di = diff
+        ci = !sh -c 'git pull && git commit "$@" && git push' -
+        syn = !git pull && git push[gui]
+[user]
+        email = yourname@youremail
+
+   - Add files to a repo
+     cd git-repo
+     git branch -a      // list all local/remote branches in git-repo
+     git log		// list commit logs of the current branch
+     git add files	// add files to the current branch
+
+   - Find other commands
+     git help
+
+   - Check what you have done on the current branch
+     git status -s
+
+   - Track your changes:
+     git diff --no-prefix >patchfile	// save changes into a patchfile
+     patch -p0 < patchfile		// apply a patch
+     patch -p0 -R < patchfile		// reverse a patch
+
+   - Commit your changes to the local repo
+     git commit -am 'info about this revision'
+
+     You can modify your commit if it is wrong:
+     git commit --amend
+
+   - Commit your changes to the remote repo
+     git push origin
+  or
+     git push origin branchname
+
+   - Undo your commits permanently
+     git reflog		// check the status of your local branch
+     git reset --hard HEAD@{1}	// select one revision to reset
+
+   - Switch to other branch
+     git checkout -b newlocalbranch remotebranch
+     git checkout existedlocalbranch
+
+   - Delete a local/remote branch
+     git branch -D localbranch
+     git branch -rD remotebranch

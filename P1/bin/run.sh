@@ -2,18 +2,18 @@
 
 echo "Hello, sangyy"
 
-cd ../src
+cd ..
 make > /dev/null
-cd ../bin
+cd bin
 
 read -n1 -rsp "Press enter to run test1"
 echo
-../src/test1
+../test1
 
 read -n1 -rsp "Press enter to run test2"
 echo
-../src/test2
+../test2
 
 read -n1 -rsp "Press enter to run test3"
 echo
-../src/test3
+../test3

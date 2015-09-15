@@ -1,0 +1,16 @@
+P2
+
+1. Kaleidoscope
+按照要求对Kaleidoscope的词法分析器进行了扩展，可运行bin/中的run.sh进行测试
+可以运行如下命令进行测试：       
+    cd ./bin
+    bash run.sh
+shell脚本会编译和运行src/中的kaleidoscope.cpp，可以使用以下的测试样例：    
+输入 
+    def add(x y) /* some comment*/ x+y;  
+会看到输出中有各种token的显示，并且有"Parse a function definition."注释中的内容被正确地忽略了    
+输入 
+    011 + 0xaF;  
+输出中有<digit, 9>, <op, +>, <digit, 175>，可见八进制的011和十六进制的0xaF都被正确的识别了   
+   
+

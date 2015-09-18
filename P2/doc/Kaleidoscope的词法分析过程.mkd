@@ -1,0 +1,6 @@
+## Kaleidoscope的词法分析过程
+--------------
+
+1. 解释函数gettok()如何向调用者传递token类别、token语义值（数字值、变量名）
+
+gettok()以整数的形式返回token的类别（在enum中定义），然后将语义值保存在全局变量IdentifierStr和NumVal中

@@ -1,0 +1,16 @@
+## C1语言单词的词法规则
+------
+
+	/*definitions*/
+delim 		[ \t\n] 
+ws 			{delim}+  
+letter 		[A-Za-z]   
+digit 		[0-9]   
+id 			{letter}({letter}|{digit})*   
+num 		    {digit}+  
+op 			[+\-\*/%] 
+const       const
+int         int
+if          if
+else        else
+while       while

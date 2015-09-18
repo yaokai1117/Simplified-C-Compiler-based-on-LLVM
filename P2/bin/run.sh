@@ -1,4 +1,5 @@
 #!/bin/bash
+cd bin
 echo
 echo "Hello, sangyy"
 

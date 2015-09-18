@@ -1,0 +1,17 @@
+## 阅读Clang词法分析文件
+-------
+
+### Clang - Token.h
+阅读class Token，解释其成员变量的意义（Loc, Kind, Flags, etc），大致理解其各个method的功能。
+   
+答：      
+
+* Loc包含了token的位置信息，通过Loc可以获得该token整个包含栈(include stack)的信息，以及所在行数、列数；   
+* Kind是token的类型，具体的类型定义在TokenKinds.def中；  
+* Flags是一个unsigned short类型，它的一个bit表示token的一个性质（如是否在一行的开始），判定这个token是否具有该性质只需要将flag与定义好的对应的常量做一个与操作，这样设计应该是出于对效率的考虑。
+* PtrData是一个依token类型而定的数据，可以是id名，字符串的内容等
+
+    Token类中的methods多是对它属性的get、set方法，以及判断它是否具有某种性质的方法（通过flag）
+    
+### Clang - Lexer.h, Lexer.cpp 
+

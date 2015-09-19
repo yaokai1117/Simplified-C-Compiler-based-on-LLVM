@@ -11,7 +11,35 @@
 * Flags是一个unsigned short类型，它的一个bit表示token的一个性质（如是否在一行的开始），判定这个token是否具有该性质只需要将flag与定义好的对应的常量做一个与操作，这样设计应该是出于对效率的考虑。
 * PtrData是一个依token类型而定的数据，可以是id名，字符串的内容等
 
-    Token类中的methods多是对它属性的get、set方法，以及判断它是否具有某种性质的方法（通过flag）
+    Token类中的methods多是对它属性的get、set函数，以及判断它是否具有某种性质的函数（通过flag与相应常量作与运算）
+
     
 ### Clang - Lexer.h, Lexer.cpp 
 
+1.解释Clang如何识别数字(LexNumericConstant)、标识符(LexIdentifier)，如何处理=和==，如何跳过注释(SkipBlockComment, SkipLineComment)
+
+答： 识别数字是当switch遇到0到9这几个字符时，调用LexNumericConstant，LexNumericConstant继续向后扫描，如何还是合法的数字就继续，否则遇到'E'、'+'等就分别进行处理；识别表示符的过程与识别数字类似。    
+
+当遇到’=‘时，词法分析器会在向下读一个字符，以判断是=还是==    
+
+当扫描到一个’/‘时，lexer会再读入一个字符，以判定是行注释还是块注释。如果是行注释，会调用SkipLineCommen，跳过接下来的数字直到遇到换行符，比较复杂的部分是处理行注释中用’/‘分行的情况；如果是块注释，会调用SkipBlockComment，这个函数判断块注释的结尾的办法是这样的：首先读入/*后面第一个字符并跳过（为了应对紧跟着一个'/'的情况），然后一直读到发现下一个'/'，判断'/'之前的字符是否是星号，从而判断有没有到块注释的结尾。  
+
+
+2.根据以往经验，代码中应尽量避免goto语句，为什么这儿出现了这么多goto？（如果你查看Flex生成的语法分析器，也会看到很多goto）
+
+答：在lexer的注释中提到这样做的目的之一是avoid recursion，即避免过多不必要的递归占用资源。因为词法分析过程中很多地方都会遇到需要”再来一次“的情况，如跳过空白符、跳过错误后自动返回下一个token，这时如果采取一个类似于尾递归的做法（如return nextToken())则还需要重新在栈上分配空间，然后传参，比较慢也比较浪费资源，使用goto可以直接继续扫描下去。  
+
+3.识别过程中是如何记录位置信息的？（只要举一种Token的例子）
+
+答：以数字类型的token为例（LexNumericConstant），在识别完成之后会调用FormTokenWithChars函数，通过Result.setLocation函数根据当前buffer指针的位置和token的长度得到token所在的位置，设定在Result对象中。
+
+4.识别出的字符串是如何转换为Token的？Clang是直接用Buffer保存字符串信息还是复制了一个字符串的备份？
+
+答：是通过FormTokenWithChars函数，将token的长度，位置，类型等信息存放在一个Result对象中，从而转化为一个token。    
+是直接将token在buffer中的位置指针和token自身的长度保存下来，没有进行复制。
+
+### Clang - Diagnostic.h, Diagnostic.cpp 
+
+了解Diagnostic的作用和原理，设计一个简单的错误程序，用Clang编译它，说明报错流程（你可能要用到Diagnostic.cpp中的FormatDiagnostic函数）
+
+答：Diagnositic的工作流程是这样的：编译过程中词法分析器、语法分析器等通过DiagnosticsEngine的report方法将错误提交给diagnosticsengine，然后DiagnosticsConsumer将错误报给用户

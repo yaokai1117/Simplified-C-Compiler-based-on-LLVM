@@ -2,7 +2,8 @@ CC = clang++
 LEX = flex
 BIN = ./bin
 SRC = ./src
-INC = ./src
+INC = ./include
+CONF = ./config
 CFLAGS = -I $(INC)
 LFLAGS = 
 
@@ -21,8 +22,8 @@ $(objects) : $(SRC)/main.cpp $(SRC)/lexer.cpp $(SRC)/tok.cpp
 	$(CC) $(CFLAGS) -c -o $(BIN)/lexer.o $(SRC)/lexer.cpp
 	$(CC) $(CFLAGS) -c -o $(BIN)/tok.o $(SRC)/tok.cpp
 
-$(SRC)/lexer.cpp : $(SRC)/lexer.lex
-	$(LEX) $(LFLAGS) -o $(SRC)/lexer.cpp $(SRC)/lexer.lex
+$(SRC)/lexer.cpp : $(CONF)/lexer.lex
+	$(LEX) $(LFLAGS) -o $(SRC)/lexer.cpp $(CONF)/lexer.lex
 
 $(BIN)/kaleido : $(SRC)/kaleidoscope.cpp
 	$(CC) $(CFLAGS) -o $@ $^

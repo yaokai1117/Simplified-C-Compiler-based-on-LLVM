@@ -3,7 +3,7 @@ P2
 运行bin/下的run.sh会编译并依次运行本次实验的两个程序。
 
 1.Kaleidoscope的词法分析过程
-按要求对Kaleidoscope的词法分析部分进行了扩展，可通过在run.sh编译运行，也可在P2目录下make，会将程序编译到bin/中
+按要求对Kaleidoscope的词法分析部分进行了扩展，可通过运行run.sh编译运行，也可在P2目录下make，会将程序编译到bin/中
 可以输入简单的表达式进行测试，如
     011＋0xaF；
 输出中会有<digit, 9> <digit, 175>，说明正确解析了八进制和十六进制
@@ -12,8 +12,10 @@ P2
 
 
 2.用Flex生成C1的词法分析器
-生成了C1的词法分析器c1c，可通过在run.sh编译运行，也可在P2目录下make，会将程序编译到bin/中
+生成了C1的词法分析器c1c，可通过run.sh编译运行，也可在P2目录下make，会将程序编译到bin/中
 可以输入C1源代码的文件名进行测试，会输出token的类型和语义值，如<ID, a> <NUM, 12>
 测试文件在test/目录下，可用的文件名有 ../test/test1.c   ../test/test2.c    ../test/test3.c
      
+3.阅读Clang源代码
+相关内容写在doc/目录下
 

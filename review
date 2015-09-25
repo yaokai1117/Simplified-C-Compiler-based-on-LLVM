@@ -1,0 +1,4 @@
+P1
+使用了shell和Makefile，Makefile写得略粗暴
+test3中的while循环条件不符合C1语法
+test4考虑的问题很独特

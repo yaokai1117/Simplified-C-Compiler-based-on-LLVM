@@ -1,0 +1,24 @@
+P3
+
+
+1. 第一题的的相关回答在doc/目录下
+
+
+2. 扩展了Kaleidoscope编译器以支持while循环，能够得到对应的AST并可以在程序介绍后输出相关的DOT图
+
+可通过运行bin/目录下的run.sh脚本自动编译运行并生成DOT图
+
+在toy运行时，可以输入以下测试语句：
+	def binary : 1 (x y) y;
+	def factorial(n)
+		var ans = 1 in
+		( while (1<n)
+		  ans = ans * n :
+		  n = n - 1) : 
+		ans;
+	factorial(6);
+这是一个求阶乘的简单函数，运行结束后会得到相应的DOT图
+	
+
+
+

@@ -1,0 +1,57 @@
+## 理解kaleidoscope的词法分析
+------
+
+### 1.解释include/ast.h中ExprAST里的virtual的作用，在继承时的原理（解释vtable）。
+
+使用virtual即定义了虚函数，目的是实现late binding，一个对象的virtual函数的实现到了runtime才被决定，是根据这个对象实例的类型决定而非根据对象指针的类型，这样有利于实现多态。  
+在继承时，虚函数通过虚表（vtable）来实现。每一个有虚函数的类都包含一个指向它的虚表，该表记录了这个类中所有虚函数的指针。每个派生类继承了它各个基类的虚表，如果一个函数被override，则虚表指向override之后的函数。每个（包含虚函数的）实例对象包含一个指向它的虚表的指针，在runtime时，这些指针才被初始化（因为在runtime才知道是基类还是派生类），因此调用虚函数时能找到正确的函数地址，从而实现多态。
+
+
+### 2.阅读HandleDefinition和HandleTopLevelExpression，忽略Codegen部分，说明两者对应的AST结构
+
+HandleDefinition调用ParseDefinition返回一个FunctionAST，对应的文法为  definition ::= 'def' prototype expression。FunctionAST包含两个属性，Proto属性是一个指向PrototypeAST对象的指针，Body属性是一个指向ExprAST对象的指针；
+HandleTopLevelExpression调用ParseTopLevelExpr返回一个FunctionAST，对应的文法为toplevelexpr ::= expression。FunctionAST中Proto属性是一个空的函数prototype，Body属性是解析到的顶层表达式。
+
+
+### 3.Kaleidoscope如何在Lexer和Parser间传递信息？（token、语义值、用什么函数和变量）
+
+通过getNextToken函数将token存在全局变量CurTok中，语义值通过全局变量IdentifierStr和NumVal传给Parser。
+
+
+### 4.Kaleidoscope如何处理算符优先级？（重点解释ParseBinOpRHS）分析a*b*c、a*b+c、a+b*c分别是如何处理的？
+
+ParseBinOpRHS是要解析右操作数，传给它的参数为前一个算符的优先级ExprPrec和左操作数LHS。首先，ParseExpression判断当前算符的优先级有没有前一个算符的优先级高（对于第一个算符，“前一个算符优先级”为0），如果没有的话，直接返回LHS。如果比前一个算符优先级高，则继续读入一个表达式RHS和下一个算符，如果下一个算符优先级高于当前算符，则递归调用ParseBinOpRHS，RHS更新为递归调用返回的结果。然后将RHS和LHS归并为新的LHS，继续循环。
+
+	对于a*b*c，首先LHS=a,RHS=b；读入下一个算符，优先级不高于前一个，于是LHS=a*b，RHS=c，继续while循环；返回BinaryExprAST，BinOp=*, LRH=a*b, RHS=c。
+	对于a*b+c，首先LHS=a,RHS=b；读入下一个算符，优先级不高于前一个，于是LHS=a*b，RHS=c，继续while循环；返回BinaryExprAST，BinOp=+, LRH=a*b, RHS=c。
+	对于a+b*c，首先LHS=a,RHS=b；读入下一个算符，优先级高于前一个，于是递归调用ParseBinOpRHS得到新的RHS=b*c,LHS仍为a，继续while循环；返回BinaryExprAST, BinOp=+, LHS=a, RHS=b*c。
+
+
+### 5.解释Error, ErrorP, ErrorF的作用，举例说明它们在语法分析中应用。
+简单的报错辅助函数。如ParseParenExpr中，如果在Parse完一个expression后读到的下一个token不是右括号，则会return Error("expected ')'"）报错。
+
+
+### 6.Kaleidoscope不支持声明变量，给变量赋值，那么变量的作用是什么？
+在不支持声明变量和赋值之前，变量的作用主要是作为函数的参数。
+
+
+### 7.为什么不需要{...}或begin...end？
+因为Kaleidoscope目前不支持变量声明和赋值，因此在函数定义中即使支持代码段也只有最后的表达式会起作用（因为前面的表达式的运算结果并不能保存下来，变量的值也不回改变）。
+在第七章中，定义了运算符：来达到类似代码段的效果，x:y会执行x和y，只返回y的值。因为此时有了变量的声明和赋值，前面表达式的结果可以通过变量赋值的方法保存并返回。
+
+
+### 8.Kaleidoscope是如何避免if/then/else语句的二义性的？
+
+Kaleidoscope中if语句必须包含else，不存在只有if/then而没有else的情况，否则词法分析器会报错。因此，所有的else都一定会被解析为离它最近的上一个if语句的一部分，而不会出现二义。
+
+
+### 9.Kaleidoscope只有一种数据类型double，那么if/then/else的分支条件是如何实现的？
+
+这里主要运用了llvm的两个指令，fcmp和uitofp，fcmp指令比较两个浮点数并且返回一个一位的布尔值，uitofp指令将unsigned类型的值转化为浮点值（与之相似的还有sitofp，即将有符号整数转化为浮点值），通过这两个指令实现了分支条件。
+
+
+
+
+
+
+

@@ -519,6 +519,7 @@ static PrototypeAST *ParsePrototype() {
     if (Kind && ArgNames.size() != Kind)
         return ErrorP("Invalid number of operands for operator");
 
+	// Insert the operator into BinopPrecedence table
     if (Kind != 0)
     	BinopPrecedence[FnName[FnName.size()-1]] = BinaryPrecedence;
 
@@ -944,9 +945,10 @@ Function *FunctionAST::Codegen() {
     if (TheFunction == 0)
         return 0;
 
-    // If this is an operator, install it.
-    if (Proto->isBinaryOp())
-        BinopPrecedence[Proto->getOperatorName()] = Proto->getBinaryPrecedence();
+// 	Move this part of code to ParseFunctionAST
+//    // If this is an operator, install it.
+//    if (Proto->isBinaryOp())
+//        BinopPrecedence[Proto->getOperatorName()] = Proto->getBinaryPrecedence();
 
     // Create a new basic block to start insertion into.
     BasicBlock *BB = BasicBlock::Create(getGlobalContext(), "entry", TheFunction);

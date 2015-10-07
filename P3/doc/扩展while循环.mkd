@@ -1,0 +1,6 @@
+## 扩展while循环
+----------
+
+首先阅读源代码中if语句，for语句等相关的代码，在ast.h中添加WhileExprAST的定义，并在toy.cpp的词法分析部分添加对tok_while的识别。然后完成ParseWhileExpr的代码，使词法分析器能够识别while语句并返回相应的AST。最后在dumpdot.cpp中实现WhileExprAST的dumpdot方法，使得程序能将AST转化为DOT图。
+
+其中遇到的一点困难是，在完成上述步骤后，使用包含新定义的符号':'的函数进行测验（即写在README中的计算阶乘的函数），发现不加上#define CODEGEN会报错，加上则不会。仔细看了所报的错误发现是无法识别其中的一个表达式，进而发现是新定义的符号':'没有被加入算符优先级表导致的。看了一下FunctionAST的Codegen发现它是在Codegen的过程中才将新定义的符号加入算符优先级表，因此才会出现不define CODEGEN就会报错的情况。我将相关的语句提前到了识别binary符号的词法分析部分，重新编译运行，解决了此问题，现在不加上#define CODEGEN也不会报错。

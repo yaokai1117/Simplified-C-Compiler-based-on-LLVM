@@ -3,9 +3,9 @@ cd bin
 echo
 echo "Hello, sangyy"
 
+cd ..
 echo
 echo "Now compiling"
-cd ..
 make
 
 echo

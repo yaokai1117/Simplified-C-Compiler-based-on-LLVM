@@ -1,5 +1,5 @@
 #define DUMPDOT
-//#define CODEGEN
+#define CODEGEN
 #include "llvm/Analysis/Passes.h"
 #include "llvm/ExecutionEngine/ExecutionEngine.h"
 #include "llvm/ExecutionEngine/MCJIT.h"
@@ -519,10 +519,6 @@ static PrototypeAST *ParsePrototype() {
     if (Kind && ArgNames.size() != Kind)
         return ErrorP("Invalid number of operands for operator");
 
-	// Insert the operator into BinopPrecedence table
-    if (Kind != 0)
-    	BinopPrecedence[FnName[FnName.size()-1]] = BinaryPrecedence;
-
     return new PrototypeAST(FnName, ArgNames, Kind != 0, BinaryPrecedence);
 }
 
@@ -730,7 +726,40 @@ Value *IfExprAST::Codegen() {
 }
 
 Value *WhileExprAST::Codegen() {
-	return 0;
+	Function *TheFunction = Builder.GetInsertBlock()->getParent();
+
+	BasicBlock *CondBB = BasicBlock::Create(getGlobalContext(), "cond", TheFunction);
+	BasicBlock *BodyBB = BasicBlock::Create(getGlobalContext(), "body");
+	BasicBlock *EndBB = BasicBlock::Create(getGlobalContext(), "end");
+
+	// Cond basic block
+	Builder.CreateBr(CondBB);
+	Builder.SetInsertPoint(CondBB);
+	Value *CondV = Cond->Codegen();
+	if (CondV == 0)
+	    return 0;
+
+	CondV = Builder.CreateFCmpONE(
+	    CondV, ConstantFP::get(getGlobalContext(), APFloat(0.0)), "while_cond");
+
+	Builder.CreateCondBr(CondV, BodyBB, EndBB);
+	CondBB = Builder.GetInsertBlock();
+
+	// Body basic block
+	TheFunction->getBasicBlockList().push_back(BodyBB);
+	Builder.SetInsertPoint(BodyBB);
+	Value *BodyV = Body->Codegen();
+	if (BodyV == 0)
+	    return 0;
+	Builder.CreateBr(CondBB);
+	BodyBB = Builder.GetInsertBlock();
+
+	// End basic block
+	TheFunction->getBasicBlockList().push_back(EndBB);
+	Builder.SetInsertPoint(EndBB);
+	EndBB = Builder.GetInsertBlock();
+
+	return Constant::getNullValue(Type::getDoubleTy(getGlobalContext()));
 }
 
 Value *ForExprAST::Codegen() {
@@ -945,10 +974,9 @@ Function *FunctionAST::Codegen() {
     if (TheFunction == 0)
         return 0;
 
-// 	Move this part of code to ParseFunctionAST
-//    // If this is an operator, install it.
-//    if (Proto->isBinaryOp())
-//        BinopPrecedence[Proto->getOperatorName()] = Proto->getBinaryPrecedence();
+    // If this is an operator, install it.
+    if (Proto->isBinaryOp())
+        BinopPrecedence[Proto->getOperatorName()] = Proto->getBinaryPrecedence();
 
     // Create a new basic block to start insertion into.
     BasicBlock *BB = BasicBlock::Create(getGlobalContext(), "entry", TheFunction);
@@ -960,13 +988,10 @@ Function *FunctionAST::Codegen() {
     if (Value *RetVal = Body->Codegen()) {
         // Finish off the function.
         Builder.CreateRet(RetVal);
-
         // Validate the generated code, checking for consistency.
         verifyFunction(*TheFunction);
-
         // Optimize the function.
         TheFPM->run(*TheFunction);
-
         return TheFunction;
     }
 

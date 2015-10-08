@@ -4,9 +4,9 @@ P3
 1. 第一题的的相关回答在doc/目录下
 
 
-2. 扩展了Kaleidoscope编译器以支持while循环，能够得到对应的AST并可以在程序介绍后输出相关的DOT图
+2. 扩展了Kaleidoscope编译器以支持while循环，包括Codegen，能够得到对应的AST并可以在程序介绍后输出相关的DOT图，并且可以输出生成的中间代码，得到函数运行的结果
 
-可通过运行bin/目录下的run.sh脚本自动编译运行并生成DOT图
+可通过运行bin/目录下的run.sh脚本自动编译运行
 
 在toy运行时，可以输入以下测试语句：
 	def binary : 1 (x y) y;
@@ -16,8 +16,16 @@ P3
 		  ans = ans * n :
 		  n = n - 1) : 
 		ans;
-	factorial(6);
-这是一个求阶乘的简单函数，运行结束后会得到相应的DOT图
+	
+	factorial(5);
+
+这是一个求阶乘的简单函数，输入factorial(5)后会得到正确结果
+
+	Evaluated to 120.000000
+
+这里似乎发现了Kaleidoscope的一个bug，toy显示给用户的Evaluated to ... 每次只有第一次计算的值是正确显示的，之后显示的值都是第一次的值，比如此时再次输入factorial(6)后结果仍然是120.0，而不是720.0
+
+退出程序后会自动生成dot图
 	
 
 

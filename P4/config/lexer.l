@@ -42,7 +42,6 @@ void 		{return VOID;}
 "*" 		{return MULT;}
 "/" 		{return DIV;}
 "%" 		{return MOD;}
-"!" 		{return ODD;}
 "{" 		{return LBRACE;}
 "}" 		{return RBRACE;}
 "[" 		{return LBRACKET;}

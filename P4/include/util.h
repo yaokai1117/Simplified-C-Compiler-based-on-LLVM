@@ -15,4 +15,6 @@
 // warning info is in orange
 #define warning(format, args...) fprintf(stderr, "\033[33mwarning: " format "\033[0m", ##args)
 
+extern bool handle_opt(int argc, char** argv);
+
 #endif

@@ -1,0 +1,1629 @@
+Grammar
+
+    0 $accept: CompUnit $end
+
+    1 CompUnit: Decl
+    2         | FuncDef
+    3         | CompUnit Decl
+    4         | CompUnit FuncDef
+
+    5 LVal: ID
+    6     | ID LBRACKET Exp RBRACKET
+
+    7 Exp: LVal
+    8    | NUM
+    9    | LPARENT Exp RPARENT
+   10    | LPARENT Exp
+   11    | Exp ERR_RPARENT
+   12    | Exp PLUS Exp
+   13    | Exp MINUS Exp
+   14    | Exp MULT Exp
+   15    | Exp DIV Exp
+   16    | Exp MOD Exp
+   17    | Exp error Exp
+   18    | PLUS Exp
+   19    | MINUS Exp
+
+   20 ExpList: Exp
+   21        | ExpList COMMA Exp
+
+   22 Decl: ConstDecl
+   23     | VarDecl
+
+   24 ConstDecl: CONST INT ConstDefList SEMICOLON
+   25          | CONST ConstDefList SEMICOLON
+
+   26 ConstDefList: ConstDef
+   27             | ConstDefList COMMA ConstDef
+
+   28 ConstDef: ID ASIGN Exp
+   29         | ID LBRACKET Exp RBRACKET ASIGN LBRACE ExpList RBRACE
+
+   30 VarDecl: INT VarList SEMICOLON
+
+   31 VarList: Var
+   32        | VarList COMMA Var
+
+   33 Var: ID
+   34    | ID LBRACKET Exp RBRACKET
+   35    | ID ASIGN Exp
+   36    | ID LBRACKET Exp RBRACKET ASIGN LBRACE ExpList RBRACE
+
+   37 FuncDef: VOID ID LPARENT RPARENT Block
+
+   38 Block: LBRACE BlockItemList RBRACE
+
+   39 BlockItemList: %empty
+   40              | BlockItemList BlockItem
+
+   41 BlockItem: Decl
+   42          | Stmt
+
+   43 Stmt: LVal ASIGN Exp SEMICOLON
+   44     | ID LPARENT RPARENT SEMICOLON
+   45     | Block
+   46     | IF LPARENT Cond RPARENT Stmt
+   47     | IF LPARENT Cond RPARENT Stmt ELSE Stmt
+   48     | WHILE LPARENT Cond RPARENT Stmt
+   49     | SEMICOLON
+
+   50 Cond: Exp LT Exp
+   51     | Exp GT Exp
+   52     | Exp LTE Exp
+   53     | Exp GTE Exp
+   54     | Exp EQ Exp
+   55     | Exp NEQ Exp
+
+
+Terminals, with rules where they appear
+
+$end (0) 0
+error (256) 17
+CONST (258) 24 25
+INT (259) 24 30
+IF (260) 46 47
+ELSE (261) 47
+WHILE (262) 48
+VOID (263) 37
+ID (264) 5 6 28 29 33 34 35 36 37 44
+NUM (265) 8
+ASIGN (266) 28 29 35 36 43
+LBRACE (267) 29 36 38
+RBRACE (268) 29 36 38
+LBRACKET (269) 6 29 34 36
+RBRACKET (270) 6 29 34 36
+LPARENT (271) 9 10 37 44 46 47 48
+RPARENT (272) 9 37 44 46 47 48
+COMMA (273) 21 27 32
+SEMICOLON (274) 24 25 30 43 44 49
+ERR_RPARENT (275) 11
+NO_ELSE (276)
+MISSING_RPARENT (277)
+EQ (278) 54
+NEQ (279) 55
+LT (280) 50
+GT (281) 51
+LTE (282) 52
+GTE (283) 53
+PLUS (284) 12 18
+MINUS (285) 13 19
+NEG (286)
+POS (287)
+MULT (288) 14
+DIV (289) 15
+MOD (290) 16
+
+
+Nonterminals, with rules where they appear
+
+$accept (36)
+    on left: 0
+CompUnit (37)
+    on left: 1 2 3 4, on right: 0 3 4
+LVal (38)
+    on left: 5 6, on right: 7 43
+Exp (39)
+    on left: 7 8 9 10 11 12 13 14 15 16 17 18 19, on right: 6 9 10
+    11 12 13 14 15 16 17 18 19 20 21 28 29 34 35 36 43 50 51 52 53
+    54 55
+ExpList (40)
+    on left: 20 21, on right: 21 29 36
+Decl (41)
+    on left: 22 23, on right: 1 3 41
+ConstDecl (42)
+    on left: 24 25, on right: 22
+ConstDefList (43)
+    on left: 26 27, on right: 24 25 27
+ConstDef (44)
+    on left: 28 29, on right: 26 27
+VarDecl (45)
+    on left: 30, on right: 23
+VarList (46)
+    on left: 31 32, on right: 30 32
+Var (47)
+    on left: 33 34 35 36, on right: 31 32
+FuncDef (48)
+    on left: 37, on right: 2 4
+Block (49)
+    on left: 38, on right: 37 45
+BlockItemList (50)
+    on left: 39 40, on right: 38 40
+BlockItem (51)
+    on left: 41 42, on right: 40
+Stmt (52)
+    on left: 43 44 45 46 47 48 49, on right: 42 46 47 48
+Cond (53)
+    on left: 50 51 52 53 54 55, on right: 46 47 48
+
+
+State 0
+
+    0 $accept: . CompUnit $end
+
+    CONST  shift, and go to state 1
+    INT    shift, and go to state 2
+    VOID   shift, and go to state 3
+
+    CompUnit   go to state 4
+    Decl       go to state 5
+    ConstDecl  go to state 6
+    VarDecl    go to state 7
+    FuncDef    go to state 8
+
+
+State 1
+
+   24 ConstDecl: CONST . INT ConstDefList SEMICOLON
+   25          | CONST . ConstDefList SEMICOLON
+
+    INT  shift, and go to state 9
+    ID   shift, and go to state 10
+
+    ConstDefList  go to state 11
+    ConstDef      go to state 12
+
+
+State 2
+
+   30 VarDecl: INT . VarList SEMICOLON
+
+    ID  shift, and go to state 13
+
+    VarList  go to state 14
+    Var      go to state 15
+
+
+State 3
+
+   37 FuncDef: VOID . ID LPARENT RPARENT Block
+
+    ID  shift, and go to state 16
+
+
+State 4
+
+    0 $accept: CompUnit . $end
+    3 CompUnit: CompUnit . Decl
+    4         | CompUnit . FuncDef
+
+    $end   shift, and go to state 17
+    CONST  shift, and go to state 1
+    INT    shift, and go to state 2
+    VOID   shift, and go to state 3
+
+    Decl       go to state 18
+    ConstDecl  go to state 6
+    VarDecl    go to state 7
+    FuncDef    go to state 19
+
+
+State 5
+
+    1 CompUnit: Decl .
+
+    $default  reduce using rule 1 (CompUnit)
+
+
+State 6
+
+   22 Decl: ConstDecl .
+
+    $default  reduce using rule 22 (Decl)
+
+
+State 7
+
+   23 Decl: VarDecl .
+
+    $default  reduce using rule 23 (Decl)
+
+
+State 8
+
+    2 CompUnit: FuncDef .
+
+    $default  reduce using rule 2 (CompUnit)
+
+
+State 9
+
+   24 ConstDecl: CONST INT . ConstDefList SEMICOLON
+
+    ID  shift, and go to state 10
+
+    ConstDefList  go to state 20
+    ConstDef      go to state 12
+
+
+State 10
+
+   28 ConstDef: ID . ASIGN Exp
+   29         | ID . LBRACKET Exp RBRACKET ASIGN LBRACE ExpList RBRACE
+
+    ASIGN     shift, and go to state 21
+    LBRACKET  shift, and go to state 22
+
+
+State 11
+
+   25 ConstDecl: CONST ConstDefList . SEMICOLON
+   27 ConstDefList: ConstDefList . COMMA ConstDef
+
+    COMMA      shift, and go to state 23
+    SEMICOLON  shift, and go to state 24
+
+
+State 12
+
+   26 ConstDefList: ConstDef .
+
+    $default  reduce using rule 26 (ConstDefList)
+
+
+State 13
+
+   33 Var: ID .
+   34    | ID . LBRACKET Exp RBRACKET
+   35    | ID . ASIGN Exp
+   36    | ID . LBRACKET Exp RBRACKET ASIGN LBRACE ExpList RBRACE
+
+    ASIGN     shift, and go to state 25
+    LBRACKET  shift, and go to state 26
+
+    $default  reduce using rule 33 (Var)
+
+
+State 14
+
+   30 VarDecl: INT VarList . SEMICOLON
+   32 VarList: VarList . COMMA Var
+
+    COMMA      shift, and go to state 27
+    SEMICOLON  shift, and go to state 28
+
+
+State 15
+
+   31 VarList: Var .
+
+    $default  reduce using rule 31 (VarList)
+
+
+State 16
+
+   37 FuncDef: VOID ID . LPARENT RPARENT Block
+
+    LPARENT  shift, and go to state 29
+
+
+State 17
+
+    0 $accept: CompUnit $end .
+
+    $default  accept
+
+
+State 18
+
+    3 CompUnit: CompUnit Decl .
+
+    $default  reduce using rule 3 (CompUnit)
+
+
+State 19
+
+    4 CompUnit: CompUnit FuncDef .
+
+    $default  reduce using rule 4 (CompUnit)
+
+
+State 20
+
+   24 ConstDecl: CONST INT ConstDefList . SEMICOLON
+   27 ConstDefList: ConstDefList . COMMA ConstDef
+
+    COMMA      shift, and go to state 23
+    SEMICOLON  shift, and go to state 30
+
+
+State 21
+
+   28 ConstDef: ID ASIGN . Exp
+
+    ID       shift, and go to state 31
+    NUM      shift, and go to state 32
+    LPARENT  shift, and go to state 33
+    PLUS     shift, and go to state 34
+    MINUS    shift, and go to state 35
+
+    LVal  go to state 36
+    Exp   go to state 37
+
+
+State 22
+
+   29 ConstDef: ID LBRACKET . Exp RBRACKET ASIGN LBRACE ExpList RBRACE
+
+    ID       shift, and go to state 31
+    NUM      shift, and go to state 32
+    LPARENT  shift, and go to state 33
+    PLUS     shift, and go to state 34
+    MINUS    shift, and go to state 35
+
+    LVal  go to state 36
+    Exp   go to state 38
+
+
+State 23
+
+   27 ConstDefList: ConstDefList COMMA . ConstDef
+
+    ID  shift, and go to state 10
+
+    ConstDef  go to state 39
+
+
+State 24
+
+   25 ConstDecl: CONST ConstDefList SEMICOLON .
+
+    $default  reduce using rule 25 (ConstDecl)
+
+
+State 25
+
+   35 Var: ID ASIGN . Exp
+
+    ID       shift, and go to state 31
+    NUM      shift, and go to state 32
+    LPARENT  shift, and go to state 33
+    PLUS     shift, and go to state 34
+    MINUS    shift, and go to state 35
+
+    LVal  go to state 36
+    Exp   go to state 40
+
+
+State 26
+
+   34 Var: ID LBRACKET . Exp RBRACKET
+   36    | ID LBRACKET . Exp RBRACKET ASIGN LBRACE ExpList RBRACE
+
+    ID       shift, and go to state 31
+    NUM      shift, and go to state 32
+    LPARENT  shift, and go to state 33
+    PLUS     shift, and go to state 34
+    MINUS    shift, and go to state 35
+
+    LVal  go to state 36
+    Exp   go to state 41
+
+
+State 27
+
+   32 VarList: VarList COMMA . Var
+
+    ID  shift, and go to state 13
+
+    Var  go to state 42
+
+
+State 28
+
+   30 VarDecl: INT VarList SEMICOLON .
+
+    $default  reduce using rule 30 (VarDecl)
+
+
+State 29
+
+   37 FuncDef: VOID ID LPARENT . RPARENT Block
+
+    RPARENT  shift, and go to state 43
+
+
+State 30
+
+   24 ConstDecl: CONST INT ConstDefList SEMICOLON .
+
+    $default  reduce using rule 24 (ConstDecl)
+
+
+State 31
+
+    5 LVal: ID .
+    6     | ID . LBRACKET Exp RBRACKET
+
+    LBRACKET  shift, and go to state 44
+
+    $default  reduce using rule 5 (LVal)
+
+
+State 32
+
+    8 Exp: NUM .
+
+    $default  reduce using rule 8 (Exp)
+
+
+State 33
+
+    9 Exp: LPARENT . Exp RPARENT
+   10    | LPARENT . Exp
+
+    ID       shift, and go to state 31
+    NUM      shift, and go to state 32
+    LPARENT  shift, and go to state 33
+    PLUS     shift, and go to state 34
+    MINUS    shift, and go to state 35
+
+    LVal  go to state 36
+    Exp   go to state 45
+
+
+State 34
+
+   18 Exp: PLUS . Exp
+
+    ID       shift, and go to state 31
+    NUM      shift, and go to state 32
+    LPARENT  shift, and go to state 33
+    PLUS     shift, and go to state 34
+    MINUS    shift, and go to state 35
+
+    LVal  go to state 36
+    Exp   go to state 46
+
+
+State 35
+
+   19 Exp: MINUS . Exp
+
+    ID       shift, and go to state 31
+    NUM      shift, and go to state 32
+    LPARENT  shift, and go to state 33
+    PLUS     shift, and go to state 34
+    MINUS    shift, and go to state 35
+
+    LVal  go to state 36
+    Exp   go to state 47
+
+
+State 36
+
+    7 Exp: LVal .
+
+    $default  reduce using rule 7 (Exp)
+
+
+State 37
+
+   11 Exp: Exp . ERR_RPARENT
+   12    | Exp . PLUS Exp
+   13    | Exp . MINUS Exp
+   14    | Exp . MULT Exp
+   15    | Exp . DIV Exp
+   16    | Exp . MOD Exp
+   17    | Exp . error Exp
+   28 ConstDef: ID ASIGN Exp .
+
+    error        shift, and go to state 48
+    ERR_RPARENT  shift, and go to state 49
+    PLUS         shift, and go to state 50
+    MINUS        shift, and go to state 51
+    MULT         shift, and go to state 52
+    DIV          shift, and go to state 53
+    MOD          shift, and go to state 54
+
+    COMMA      reduce using rule 28 (ConstDef)
+    SEMICOLON  reduce using rule 28 (ConstDef)
+
+
+State 38
+
+   11 Exp: Exp . ERR_RPARENT
+   12    | Exp . PLUS Exp
+   13    | Exp . MINUS Exp
+   14    | Exp . MULT Exp
+   15    | Exp . DIV Exp
+   16    | Exp . MOD Exp
+   17    | Exp . error Exp
+   29 ConstDef: ID LBRACKET Exp . RBRACKET ASIGN LBRACE ExpList RBRACE
+
+    error        shift, and go to state 48
+    RBRACKET     shift, and go to state 55
+    ERR_RPARENT  shift, and go to state 49
+    PLUS         shift, and go to state 50
+    MINUS        shift, and go to state 51
+    MULT         shift, and go to state 52
+    DIV          shift, and go to state 53
+    MOD          shift, and go to state 54
+
+
+State 39
+
+   27 ConstDefList: ConstDefList COMMA ConstDef .
+
+    $default  reduce using rule 27 (ConstDefList)
+
+
+State 40
+
+   11 Exp: Exp . ERR_RPARENT
+   12    | Exp . PLUS Exp
+   13    | Exp . MINUS Exp
+   14    | Exp . MULT Exp
+   15    | Exp . DIV Exp
+   16    | Exp . MOD Exp
+   17    | Exp . error Exp
+   35 Var: ID ASIGN Exp .
+
+    error        shift, and go to state 48
+    ERR_RPARENT  shift, and go to state 49
+    PLUS         shift, and go to state 50
+    MINUS        shift, and go to state 51
+    MULT         shift, and go to state 52
+    DIV          shift, and go to state 53
+    MOD          shift, and go to state 54
+
+    COMMA      reduce using rule 35 (Var)
+    SEMICOLON  reduce using rule 35 (Var)
+
+
+State 41
+
+   11 Exp: Exp . ERR_RPARENT
+   12    | Exp . PLUS Exp
+   13    | Exp . MINUS Exp
+   14    | Exp . MULT Exp
+   15    | Exp . DIV Exp
+   16    | Exp . MOD Exp
+   17    | Exp . error Exp
+   34 Var: ID LBRACKET Exp . RBRACKET
+   36    | ID LBRACKET Exp . RBRACKET ASIGN LBRACE ExpList RBRACE
+
+    error        shift, and go to state 48
+    RBRACKET     shift, and go to state 56
+    ERR_RPARENT  shift, and go to state 49
+    PLUS         shift, and go to state 50
+    MINUS        shift, and go to state 51
+    MULT         shift, and go to state 52
+    DIV          shift, and go to state 53
+    MOD          shift, and go to state 54
+
+
+State 42
+
+   32 VarList: VarList COMMA Var .
+
+    $default  reduce using rule 32 (VarList)
+
+
+State 43
+
+   37 FuncDef: VOID ID LPARENT RPARENT . Block
+
+    LBRACE  shift, and go to state 57
+
+    Block  go to state 58
+
+
+State 44
+
+    6 LVal: ID LBRACKET . Exp RBRACKET
+
+    ID       shift, and go to state 31
+    NUM      shift, and go to state 32
+    LPARENT  shift, and go to state 33
+    PLUS     shift, and go to state 34
+    MINUS    shift, and go to state 35
+
+    LVal  go to state 36
+    Exp   go to state 59
+
+
+State 45
+
+    9 Exp: LPARENT Exp . RPARENT
+   10    | LPARENT Exp .
+   11    | Exp . ERR_RPARENT
+   12    | Exp . PLUS Exp
+   13    | Exp . MINUS Exp
+   14    | Exp . MULT Exp
+   15    | Exp . DIV Exp
+   16    | Exp . MOD Exp
+   17    | Exp . error Exp
+
+    error        shift, and go to state 48
+    RPARENT      shift, and go to state 60
+    ERR_RPARENT  shift, and go to state 49
+    PLUS         shift, and go to state 50
+    MINUS        shift, and go to state 51
+    MULT         shift, and go to state 52
+    DIV          shift, and go to state 53
+    MOD          shift, and go to state 54
+
+    RBRACE     reduce using rule 10 (Exp)
+    RBRACKET   reduce using rule 10 (Exp)
+    COMMA      reduce using rule 10 (Exp)
+    SEMICOLON  reduce using rule 10 (Exp)
+    EQ         reduce using rule 10 (Exp)
+    NEQ        reduce using rule 10 (Exp)
+    LT         reduce using rule 10 (Exp)
+    GT         reduce using rule 10 (Exp)
+    LTE        reduce using rule 10 (Exp)
+    GTE        reduce using rule 10 (Exp)
+
+
+State 46
+
+   11 Exp: Exp . ERR_RPARENT
+   12    | Exp . PLUS Exp
+   13    | Exp . MINUS Exp
+   14    | Exp . MULT Exp
+   15    | Exp . DIV Exp
+   16    | Exp . MOD Exp
+   17    | Exp . error Exp
+   18    | PLUS Exp .
+
+    MULT  shift, and go to state 52
+    DIV   shift, and go to state 53
+    MOD   shift, and go to state 54
+
+    $default  reduce using rule 18 (Exp)
+
+
+State 47
+
+   11 Exp: Exp . ERR_RPARENT
+   12    | Exp . PLUS Exp
+   13    | Exp . MINUS Exp
+   14    | Exp . MULT Exp
+   15    | Exp . DIV Exp
+   16    | Exp . MOD Exp
+   17    | Exp . error Exp
+   19    | MINUS Exp .
+
+    MULT  shift, and go to state 52
+    DIV   shift, and go to state 53
+    MOD   shift, and go to state 54
+
+    $default  reduce using rule 19 (Exp)
+
+
+State 48
+
+   17 Exp: Exp error . Exp
+
+    ID       shift, and go to state 31
+    NUM      shift, and go to state 32
+    LPARENT  shift, and go to state 33
+    PLUS     shift, and go to state 34
+    MINUS    shift, and go to state 35
+
+    LVal  go to state 36
+    Exp   go to state 61
+
+
+State 49
+
+   11 Exp: Exp ERR_RPARENT .
+
+    $default  reduce using rule 11 (Exp)
+
+
+State 50
+
+   12 Exp: Exp PLUS . Exp
+
+    ID       shift, and go to state 31
+    NUM      shift, and go to state 32
+    LPARENT  shift, and go to state 33
+    PLUS     shift, and go to state 34
+    MINUS    shift, and go to state 35
+
+    LVal  go to state 36
+    Exp   go to state 62
+
+
+State 51
+
+   13 Exp: Exp MINUS . Exp
+
+    ID       shift, and go to state 31
+    NUM      shift, and go to state 32
+    LPARENT  shift, and go to state 33
+    PLUS     shift, and go to state 34
+    MINUS    shift, and go to state 35
+
+    LVal  go to state 36
+    Exp   go to state 63
+
+
+State 52
+
+   14 Exp: Exp MULT . Exp
+
+    ID       shift, and go to state 31
+    NUM      shift, and go to state 32
+    LPARENT  shift, and go to state 33
+    PLUS     shift, and go to state 34
+    MINUS    shift, and go to state 35
+
+    LVal  go to state 36
+    Exp   go to state 64
+
+
+State 53
+
+   15 Exp: Exp DIV . Exp
+
+    ID       shift, and go to state 31
+    NUM      shift, and go to state 32
+    LPARENT  shift, and go to state 33
+    PLUS     shift, and go to state 34
+    MINUS    shift, and go to state 35
+
+    LVal  go to state 36
+    Exp   go to state 65
+
+
+State 54
+
+   16 Exp: Exp MOD . Exp
+
+    ID       shift, and go to state 31
+    NUM      shift, and go to state 32
+    LPARENT  shift, and go to state 33
+    PLUS     shift, and go to state 34
+    MINUS    shift, and go to state 35
+
+    LVal  go to state 36
+    Exp   go to state 66
+
+
+State 55
+
+   29 ConstDef: ID LBRACKET Exp RBRACKET . ASIGN LBRACE ExpList RBRACE
+
+    ASIGN  shift, and go to state 67
+
+
+State 56
+
+   34 Var: ID LBRACKET Exp RBRACKET .
+   36    | ID LBRACKET Exp RBRACKET . ASIGN LBRACE ExpList RBRACE
+
+    ASIGN  shift, and go to state 68
+
+    $default  reduce using rule 34 (Var)
+
+
+State 57
+
+   38 Block: LBRACE . BlockItemList RBRACE
+
+    $default  reduce using rule 39 (BlockItemList)
+
+    BlockItemList  go to state 69
+
+
+State 58
+
+   37 FuncDef: VOID ID LPARENT RPARENT Block .
+
+    $default  reduce using rule 37 (FuncDef)
+
+
+State 59
+
+    6 LVal: ID LBRACKET Exp . RBRACKET
+   11 Exp: Exp . ERR_RPARENT
+   12    | Exp . PLUS Exp
+   13    | Exp . MINUS Exp
+   14    | Exp . MULT Exp
+   15    | Exp . DIV Exp
+   16    | Exp . MOD Exp
+   17    | Exp . error Exp
+
+    error        shift, and go to state 48
+    RBRACKET     shift, and go to state 70
+    ERR_RPARENT  shift, and go to state 49
+    PLUS         shift, and go to state 50
+    MINUS        shift, and go to state 51
+    MULT         shift, and go to state 52
+    DIV          shift, and go to state 53
+    MOD          shift, and go to state 54
+
+
+State 60
+
+    9 Exp: LPARENT Exp RPARENT .
+
+    $default  reduce using rule 9 (Exp)
+
+
+State 61
+
+   11 Exp: Exp . ERR_RPARENT
+   12    | Exp . PLUS Exp
+   13    | Exp . MINUS Exp
+   14    | Exp . MULT Exp
+   15    | Exp . DIV Exp
+   16    | Exp . MOD Exp
+   17    | Exp . error Exp
+   17    | Exp error Exp .
+
+    PLUS   shift, and go to state 50
+    MINUS  shift, and go to state 51
+    MULT   shift, and go to state 52
+    DIV    shift, and go to state 53
+    MOD    shift, and go to state 54
+
+    $default  reduce using rule 17 (Exp)
+
+
+State 62
+
+   11 Exp: Exp . ERR_RPARENT
+   12    | Exp . PLUS Exp
+   12    | Exp PLUS Exp .
+   13    | Exp . MINUS Exp
+   14    | Exp . MULT Exp
+   15    | Exp . DIV Exp
+   16    | Exp . MOD Exp
+   17    | Exp . error Exp
+
+    MULT  shift, and go to state 52
+    DIV   shift, and go to state 53
+    MOD   shift, and go to state 54
+
+    $default  reduce using rule 12 (Exp)
+
+
+State 63
+
+   11 Exp: Exp . ERR_RPARENT
+   12    | Exp . PLUS Exp
+   13    | Exp . MINUS Exp
+   13    | Exp MINUS Exp .
+   14    | Exp . MULT Exp
+   15    | Exp . DIV Exp
+   16    | Exp . MOD Exp
+   17    | Exp . error Exp
+
+    MULT  shift, and go to state 52
+    DIV   shift, and go to state 53
+    MOD   shift, and go to state 54
+
+    $default  reduce using rule 13 (Exp)
+
+
+State 64
+
+   11 Exp: Exp . ERR_RPARENT
+   12    | Exp . PLUS Exp
+   13    | Exp . MINUS Exp
+   14    | Exp . MULT Exp
+   14    | Exp MULT Exp .
+   15    | Exp . DIV Exp
+   16    | Exp . MOD Exp
+   17    | Exp . error Exp
+
+    $default  reduce using rule 14 (Exp)
+
+
+State 65
+
+   11 Exp: Exp . ERR_RPARENT
+   12    | Exp . PLUS Exp
+   13    | Exp . MINUS Exp
+   14    | Exp . MULT Exp
+   15    | Exp . DIV Exp
+   15    | Exp DIV Exp .
+   16    | Exp . MOD Exp
+   17    | Exp . error Exp
+
+    $default  reduce using rule 15 (Exp)
+
+
+State 66
+
+   11 Exp: Exp . ERR_RPARENT
+   12    | Exp . PLUS Exp
+   13    | Exp . MINUS Exp
+   14    | Exp . MULT Exp
+   15    | Exp . DIV Exp
+   16    | Exp . MOD Exp
+   16    | Exp MOD Exp .
+   17    | Exp . error Exp
+
+    $default  reduce using rule 16 (Exp)
+
+
+State 67
+
+   29 ConstDef: ID LBRACKET Exp RBRACKET ASIGN . LBRACE ExpList RBRACE
+
+    LBRACE  shift, and go to state 71
+
+
+State 68
+
+   36 Var: ID LBRACKET Exp RBRACKET ASIGN . LBRACE ExpList RBRACE
+
+    LBRACE  shift, and go to state 72
+
+
+State 69
+
+   38 Block: LBRACE BlockItemList . RBRACE
+   40 BlockItemList: BlockItemList . BlockItem
+
+    CONST      shift, and go to state 1
+    INT        shift, and go to state 2
+    IF         shift, and go to state 73
+    WHILE      shift, and go to state 74
+    ID         shift, and go to state 75
+    LBRACE     shift, and go to state 57
+    RBRACE     shift, and go to state 76
+    SEMICOLON  shift, and go to state 77
+
+    LVal       go to state 78
+    Decl       go to state 79
+    ConstDecl  go to state 6
+    VarDecl    go to state 7
+    Block      go to state 80
+    BlockItem  go to state 81
+    Stmt       go to state 82
+
+
+State 70
+
+    6 LVal: ID LBRACKET Exp RBRACKET .
+
+    $default  reduce using rule 6 (LVal)
+
+
+State 71
+
+   29 ConstDef: ID LBRACKET Exp RBRACKET ASIGN LBRACE . ExpList RBRACE
+
+    ID       shift, and go to state 31
+    NUM      shift, and go to state 32
+    LPARENT  shift, and go to state 33
+    PLUS     shift, and go to state 34
+    MINUS    shift, and go to state 35
+
+    LVal     go to state 36
+    Exp      go to state 83
+    ExpList  go to state 84
+
+
+State 72
+
+   36 Var: ID LBRACKET Exp RBRACKET ASIGN LBRACE . ExpList RBRACE
+
+    ID       shift, and go to state 31
+    NUM      shift, and go to state 32
+    LPARENT  shift, and go to state 33
+    PLUS     shift, and go to state 34
+    MINUS    shift, and go to state 35
+
+    LVal     go to state 36
+    Exp      go to state 83
+    ExpList  go to state 85
+
+
+State 73
+
+   46 Stmt: IF . LPARENT Cond RPARENT Stmt
+   47     | IF . LPARENT Cond RPARENT Stmt ELSE Stmt
+
+    LPARENT  shift, and go to state 86
+
+
+State 74
+
+   48 Stmt: WHILE . LPARENT Cond RPARENT Stmt
+
+    LPARENT  shift, and go to state 87
+
+
+State 75
+
+    5 LVal: ID .
+    6     | ID . LBRACKET Exp RBRACKET
+   44 Stmt: ID . LPARENT RPARENT SEMICOLON
+
+    LBRACKET  shift, and go to state 44
+    LPARENT   shift, and go to state 88
+
+    $default  reduce using rule 5 (LVal)
+
+
+State 76
+
+   38 Block: LBRACE BlockItemList RBRACE .
+
+    $default  reduce using rule 38 (Block)
+
+
+State 77
+
+   49 Stmt: SEMICOLON .
+
+    $default  reduce using rule 49 (Stmt)
+
+
+State 78
+
+   43 Stmt: LVal . ASIGN Exp SEMICOLON
+
+    ASIGN  shift, and go to state 89
+
+
+State 79
+
+   41 BlockItem: Decl .
+
+    $default  reduce using rule 41 (BlockItem)
+
+
+State 80
+
+   45 Stmt: Block .
+
+    $default  reduce using rule 45 (Stmt)
+
+
+State 81
+
+   40 BlockItemList: BlockItemList BlockItem .
+
+    $default  reduce using rule 40 (BlockItemList)
+
+
+State 82
+
+   42 BlockItem: Stmt .
+
+    $default  reduce using rule 42 (BlockItem)
+
+
+State 83
+
+   11 Exp: Exp . ERR_RPARENT
+   12    | Exp . PLUS Exp
+   13    | Exp . MINUS Exp
+   14    | Exp . MULT Exp
+   15    | Exp . DIV Exp
+   16    | Exp . MOD Exp
+   17    | Exp . error Exp
+   20 ExpList: Exp .
+
+    error        shift, and go to state 48
+    ERR_RPARENT  shift, and go to state 49
+    PLUS         shift, and go to state 50
+    MINUS        shift, and go to state 51
+    MULT         shift, and go to state 52
+    DIV          shift, and go to state 53
+    MOD          shift, and go to state 54
+
+    RBRACE  reduce using rule 20 (ExpList)
+    COMMA   reduce using rule 20 (ExpList)
+
+
+State 84
+
+   21 ExpList: ExpList . COMMA Exp
+   29 ConstDef: ID LBRACKET Exp RBRACKET ASIGN LBRACE ExpList . RBRACE
+
+    RBRACE  shift, and go to state 90
+    COMMA   shift, and go to state 91
+
+
+State 85
+
+   21 ExpList: ExpList . COMMA Exp
+   36 Var: ID LBRACKET Exp RBRACKET ASIGN LBRACE ExpList . RBRACE
+
+    RBRACE  shift, and go to state 92
+    COMMA   shift, and go to state 91
+
+
+State 86
+
+   46 Stmt: IF LPARENT . Cond RPARENT Stmt
+   47     | IF LPARENT . Cond RPARENT Stmt ELSE Stmt
+
+    ID       shift, and go to state 31
+    NUM      shift, and go to state 32
+    LPARENT  shift, and go to state 33
+    PLUS     shift, and go to state 34
+    MINUS    shift, and go to state 35
+
+    LVal  go to state 36
+    Exp   go to state 93
+    Cond  go to state 94
+
+
+State 87
+
+   48 Stmt: WHILE LPARENT . Cond RPARENT Stmt
+
+    ID       shift, and go to state 31
+    NUM      shift, and go to state 32
+    LPARENT  shift, and go to state 33
+    PLUS     shift, and go to state 34
+    MINUS    shift, and go to state 35
+
+    LVal  go to state 36
+    Exp   go to state 93
+    Cond  go to state 95
+
+
+State 88
+
+   44 Stmt: ID LPARENT . RPARENT SEMICOLON
+
+    RPARENT  shift, and go to state 96
+
+
+State 89
+
+   43 Stmt: LVal ASIGN . Exp SEMICOLON
+
+    ID       shift, and go to state 31
+    NUM      shift, and go to state 32
+    LPARENT  shift, and go to state 33
+    PLUS     shift, and go to state 34
+    MINUS    shift, and go to state 35
+
+    LVal  go to state 36
+    Exp   go to state 97
+
+
+State 90
+
+   29 ConstDef: ID LBRACKET Exp RBRACKET ASIGN LBRACE ExpList RBRACE .
+
+    $default  reduce using rule 29 (ConstDef)
+
+
+State 91
+
+   21 ExpList: ExpList COMMA . Exp
+
+    ID       shift, and go to state 31
+    NUM      shift, and go to state 32
+    LPARENT  shift, and go to state 33
+    PLUS     shift, and go to state 34
+    MINUS    shift, and go to state 35
+
+    LVal  go to state 36
+    Exp   go to state 98
+
+
+State 92
+
+   36 Var: ID LBRACKET Exp RBRACKET ASIGN LBRACE ExpList RBRACE .
+
+    $default  reduce using rule 36 (Var)
+
+
+State 93
+
+   11 Exp: Exp . ERR_RPARENT
+   12    | Exp . PLUS Exp
+   13    | Exp . MINUS Exp
+   14    | Exp . MULT Exp
+   15    | Exp . DIV Exp
+   16    | Exp . MOD Exp
+   17    | Exp . error Exp
+   50 Cond: Exp . LT Exp
+   51     | Exp . GT Exp
+   52     | Exp . LTE Exp
+   53     | Exp . GTE Exp
+   54     | Exp . EQ Exp
+   55     | Exp . NEQ Exp
+
+    error        shift, and go to state 48
+    ERR_RPARENT  shift, and go to state 49
+    EQ           shift, and go to state 99
+    NEQ          shift, and go to state 100
+    LT           shift, and go to state 101
+    GT           shift, and go to state 102
+    LTE          shift, and go to state 103
+    GTE          shift, and go to state 104
+    PLUS         shift, and go to state 50
+    MINUS        shift, and go to state 51
+    MULT         shift, and go to state 52
+    DIV          shift, and go to state 53
+    MOD          shift, and go to state 54
+
+
+State 94
+
+   46 Stmt: IF LPARENT Cond . RPARENT Stmt
+   47     | IF LPARENT Cond . RPARENT Stmt ELSE Stmt
+
+    RPARENT  shift, and go to state 105
+
+
+State 95
+
+   48 Stmt: WHILE LPARENT Cond . RPARENT Stmt
+
+    RPARENT  shift, and go to state 106
+
+
+State 96
+
+   44 Stmt: ID LPARENT RPARENT . SEMICOLON
+
+    SEMICOLON  shift, and go to state 107
+
+
+State 97
+
+   11 Exp: Exp . ERR_RPARENT
+   12    | Exp . PLUS Exp
+   13    | Exp . MINUS Exp
+   14    | Exp . MULT Exp
+   15    | Exp . DIV Exp
+   16    | Exp . MOD Exp
+   17    | Exp . error Exp
+   43 Stmt: LVal ASIGN Exp . SEMICOLON
+
+    error        shift, and go to state 48
+    SEMICOLON    shift, and go to state 108
+    ERR_RPARENT  shift, and go to state 49
+    PLUS         shift, and go to state 50
+    MINUS        shift, and go to state 51
+    MULT         shift, and go to state 52
+    DIV          shift, and go to state 53
+    MOD          shift, and go to state 54
+
+
+State 98
+
+   11 Exp: Exp . ERR_RPARENT
+   12    | Exp . PLUS Exp
+   13    | Exp . MINUS Exp
+   14    | Exp . MULT Exp
+   15    | Exp . DIV Exp
+   16    | Exp . MOD Exp
+   17    | Exp . error Exp
+   21 ExpList: ExpList COMMA Exp .
+
+    error        shift, and go to state 48
+    ERR_RPARENT  shift, and go to state 49
+    PLUS         shift, and go to state 50
+    MINUS        shift, and go to state 51
+    MULT         shift, and go to state 52
+    DIV          shift, and go to state 53
+    MOD          shift, and go to state 54
+
+    RBRACE  reduce using rule 21 (ExpList)
+    COMMA   reduce using rule 21 (ExpList)
+
+
+State 99
+
+   54 Cond: Exp EQ . Exp
+
+    ID       shift, and go to state 31
+    NUM      shift, and go to state 32
+    LPARENT  shift, and go to state 33
+    PLUS     shift, and go to state 34
+    MINUS    shift, and go to state 35
+
+    LVal  go to state 36
+    Exp   go to state 109
+
+
+State 100
+
+   55 Cond: Exp NEQ . Exp
+
+    ID       shift, and go to state 31
+    NUM      shift, and go to state 32
+    LPARENT  shift, and go to state 33
+    PLUS     shift, and go to state 34
+    MINUS    shift, and go to state 35
+
+    LVal  go to state 36
+    Exp   go to state 110
+
+
+State 101
+
+   50 Cond: Exp LT . Exp
+
+    ID       shift, and go to state 31
+    NUM      shift, and go to state 32
+    LPARENT  shift, and go to state 33
+    PLUS     shift, and go to state 34
+    MINUS    shift, and go to state 35
+
+    LVal  go to state 36
+    Exp   go to state 111
+
+
+State 102
+
+   51 Cond: Exp GT . Exp
+
+    ID       shift, and go to state 31
+    NUM      shift, and go to state 32
+    LPARENT  shift, and go to state 33
+    PLUS     shift, and go to state 34
+    MINUS    shift, and go to state 35
+
+    LVal  go to state 36
+    Exp   go to state 112
+
+
+State 103
+
+   52 Cond: Exp LTE . Exp
+
+    ID       shift, and go to state 31
+    NUM      shift, and go to state 32
+    LPARENT  shift, and go to state 33
+    PLUS     shift, and go to state 34
+    MINUS    shift, and go to state 35
+
+    LVal  go to state 36
+    Exp   go to state 113
+
+
+State 104
+
+   53 Cond: Exp GTE . Exp
+
+    ID       shift, and go to state 31
+    NUM      shift, and go to state 32
+    LPARENT  shift, and go to state 33
+    PLUS     shift, and go to state 34
+    MINUS    shift, and go to state 35
+
+    LVal  go to state 36
+    Exp   go to state 114
+
+
+State 105
+
+   46 Stmt: IF LPARENT Cond RPARENT . Stmt
+   47     | IF LPARENT Cond RPARENT . Stmt ELSE Stmt
+
+    IF         shift, and go to state 73
+    WHILE      shift, and go to state 74
+    ID         shift, and go to state 75
+    LBRACE     shift, and go to state 57
+    SEMICOLON  shift, and go to state 77
+
+    LVal   go to state 78
+    Block  go to state 80
+    Stmt   go to state 115
+
+
+State 106
+
+   48 Stmt: WHILE LPARENT Cond RPARENT . Stmt
+
+    IF         shift, and go to state 73
+    WHILE      shift, and go to state 74
+    ID         shift, and go to state 75
+    LBRACE     shift, and go to state 57
+    SEMICOLON  shift, and go to state 77
+
+    LVal   go to state 78
+    Block  go to state 80
+    Stmt   go to state 116
+
+
+State 107
+
+   44 Stmt: ID LPARENT RPARENT SEMICOLON .
+
+    $default  reduce using rule 44 (Stmt)
+
+
+State 108
+
+   43 Stmt: LVal ASIGN Exp SEMICOLON .
+
+    $default  reduce using rule 43 (Stmt)
+
+
+State 109
+
+   11 Exp: Exp . ERR_RPARENT
+   12    | Exp . PLUS Exp
+   13    | Exp . MINUS Exp
+   14    | Exp . MULT Exp
+   15    | Exp . DIV Exp
+   16    | Exp . MOD Exp
+   17    | Exp . error Exp
+   54 Cond: Exp EQ Exp .
+
+    error        shift, and go to state 48
+    ERR_RPARENT  shift, and go to state 49
+    PLUS         shift, and go to state 50
+    MINUS        shift, and go to state 51
+    MULT         shift, and go to state 52
+    DIV          shift, and go to state 53
+    MOD          shift, and go to state 54
+
+    RPARENT  reduce using rule 54 (Cond)
+
+
+State 110
+
+   11 Exp: Exp . ERR_RPARENT
+   12    | Exp . PLUS Exp
+   13    | Exp . MINUS Exp
+   14    | Exp . MULT Exp
+   15    | Exp . DIV Exp
+   16    | Exp . MOD Exp
+   17    | Exp . error Exp
+   55 Cond: Exp NEQ Exp .
+
+    error        shift, and go to state 48
+    ERR_RPARENT  shift, and go to state 49
+    PLUS         shift, and go to state 50
+    MINUS        shift, and go to state 51
+    MULT         shift, and go to state 52
+    DIV          shift, and go to state 53
+    MOD          shift, and go to state 54
+
+    RPARENT  reduce using rule 55 (Cond)
+
+
+State 111
+
+   11 Exp: Exp . ERR_RPARENT
+   12    | Exp . PLUS Exp
+   13    | Exp . MINUS Exp
+   14    | Exp . MULT Exp
+   15    | Exp . DIV Exp
+   16    | Exp . MOD Exp
+   17    | Exp . error Exp
+   50 Cond: Exp LT Exp .
+
+    error        shift, and go to state 48
+    ERR_RPARENT  shift, and go to state 49
+    PLUS         shift, and go to state 50
+    MINUS        shift, and go to state 51
+    MULT         shift, and go to state 52
+    DIV          shift, and go to state 53
+    MOD          shift, and go to state 54
+
+    RPARENT  reduce using rule 50 (Cond)
+
+
+State 112
+
+   11 Exp: Exp . ERR_RPARENT
+   12    | Exp . PLUS Exp
+   13    | Exp . MINUS Exp
+   14    | Exp . MULT Exp
+   15    | Exp . DIV Exp
+   16    | Exp . MOD Exp
+   17    | Exp . error Exp
+   51 Cond: Exp GT Exp .
+
+    error        shift, and go to state 48
+    ERR_RPARENT  shift, and go to state 49
+    PLUS         shift, and go to state 50
+    MINUS        shift, and go to state 51
+    MULT         shift, and go to state 52
+    DIV          shift, and go to state 53
+    MOD          shift, and go to state 54
+
+    RPARENT  reduce using rule 51 (Cond)
+
+
+State 113
+
+   11 Exp: Exp . ERR_RPARENT
+   12    | Exp . PLUS Exp
+   13    | Exp . MINUS Exp
+   14    | Exp . MULT Exp
+   15    | Exp . DIV Exp
+   16    | Exp . MOD Exp
+   17    | Exp . error Exp
+   52 Cond: Exp LTE Exp .
+
+    error        shift, and go to state 48
+    ERR_RPARENT  shift, and go to state 49
+    PLUS         shift, and go to state 50
+    MINUS        shift, and go to state 51
+    MULT         shift, and go to state 52
+    DIV          shift, and go to state 53
+    MOD          shift, and go to state 54
+
+    RPARENT  reduce using rule 52 (Cond)
+
+
+State 114
+
+   11 Exp: Exp . ERR_RPARENT
+   12    | Exp . PLUS Exp
+   13    | Exp . MINUS Exp
+   14    | Exp . MULT Exp
+   15    | Exp . DIV Exp
+   16    | Exp . MOD Exp
+   17    | Exp . error Exp
+   53 Cond: Exp GTE Exp .
+
+    error        shift, and go to state 48
+    ERR_RPARENT  shift, and go to state 49
+    PLUS         shift, and go to state 50
+    MINUS        shift, and go to state 51
+    MULT         shift, and go to state 52
+    DIV          shift, and go to state 53
+    MOD          shift, and go to state 54
+
+    RPARENT  reduce using rule 53 (Cond)
+
+
+State 115
+
+   46 Stmt: IF LPARENT Cond RPARENT Stmt .
+   47     | IF LPARENT Cond RPARENT Stmt . ELSE Stmt
+
+    ELSE  shift, and go to state 117
+
+    $default  reduce using rule 46 (Stmt)
+
+
+State 116
+
+   48 Stmt: WHILE LPARENT Cond RPARENT Stmt .
+
+    $default  reduce using rule 48 (Stmt)
+
+
+State 117
+
+   47 Stmt: IF LPARENT Cond RPARENT Stmt ELSE . Stmt
+
+    IF         shift, and go to state 73
+    WHILE      shift, and go to state 74
+    ID         shift, and go to state 75
+    LBRACE     shift, and go to state 57
+    SEMICOLON  shift, and go to state 77
+
+    LVal   go to state 78
+    Block  go to state 80
+    Stmt   go to state 118
+
+
+State 118
+
+   47 Stmt: IF LPARENT Cond RPARENT Stmt ELSE Stmt .
+
+    $default  reduce using rule 47 (Stmt)

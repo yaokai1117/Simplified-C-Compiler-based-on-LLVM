@@ -3,32 +3,41 @@
 #include <string>
 #define DEBUG
 #include "util.h"
+#include "global.h"
 extern int yylex();
 extern int yyerror(const char *msg);
 extern int lparent_num;
-
 void missParent(int flag, int line, int column);
 %}
 
-%debug
 %locations
 
+
+%token CONST INT IF ELSE WHILE VOID ID NUM
+%token ASIGN LBRACE RBRACE LBRACKET RBRACKET LPARENT RPARENT COMMA SEMICOLON ERR_RPARENT 
+
+%precedence NO_ELSE
+%precedence ELSE
+
+%precedence MISSING_RPARENT
+%precedence RPARENT LPARENT ERR_RPARENT
+
+%left error  /*not good, but useful here*/
 %left EQ NEQ
 %left LT GT LTE GTE
 %left PLUS MINUS
 %precedence NEG POS
 %left MULT DIV MOD
 
-%token CONST INT IF ELSE WHILE VOID ID NUM
-%token ASIGN ODD LBRACE RBRACE LBRACKET RBRACKET LPARENT RPARENT COMMA SEMICOLON ERR_RPARENT
-
 
 %%
+
 CompUnit: Decl 				{debug("CompUnit ::= Decl\n");}
 		| FuncDef 			{debug("CompUnit ::= FuncDef\n");}
 		| CompUnit Decl 	{debug("CompUnit ::= CompUnit Decl\n");}
 		| CompUnit FuncDef 	{debug("CompUnit ::= CompUnit FuncDef\n");}
 		;
+
 		
 LVal: ID 				{debug("LVal ::= ID\n");}
 	| ID LBRACKET Exp RBRACKET {debug("LVal ::= ID '[' Exp ']'\n");}
@@ -38,7 +47,7 @@ Exp: LVal 				{debug("Exp ::= LVal\n");}
    | NUM 				{debug("Exp ::= NUM\n");}
 
    | LPARENT Exp RPARENT {debug("Exp ::= '(' Exp ')'\n");}
-   | LPARENT Exp 		{missParent(1, @2.first_line, @2.last_column);}
+   | LPARENT Exp %prec MISSING_RPARENT		{missParent(1, @2.first_line, @2.last_column);}
    | Exp ERR_RPARENT 	{missParent(0, @1.first_line, @1.last_column);}
 
    | Exp PLUS Exp 		{debug("Exp ::= Exp PLUS Exp\n");}
@@ -47,7 +56,10 @@ Exp: LVal 				{debug("Exp ::= LVal\n");}
    | Exp DIV Exp 		{debug("Exp ::= Exp DIV Exp\n");}
    | Exp MOD Exp 		{debug("Exp ::= Exp MOD Exp\n");}
 
-   | Exp Exp 			{error("missing op, in line %d, column %d.\n", @1.first_line, @1.last_column);}
+   | Exp error  Exp 	{
+   						yyerrok; 
+						error("missing op, in line %d, column %d.\n", @1.first_line, @1.last_column);
+						}
 
    | PLUS Exp %prec POS {debug("Exp ::= POS Exp\n");}
    | MINUS Exp %prec NEG {debug("Exp ::= NEG Exp\n");}
@@ -87,8 +99,6 @@ Var: ID 				{debug("Var ::= ID\n");}
    ;
 
 FuncDef: VOID ID LPARENT RPARENT Block 	{debug("FuncDef ::= VOID ID '(' ')' Block\n");}
-	   | VOID ID LPARENT Block 			{missParent(1, @2.first_line, @2.last_column);}
-	   | VOID ID ERR_RPARENT Block 		{missParent(0, @1.first_line, @1.last_column);}
 	   ;
 
 Block: LBRACE BlockItemList RBRACE {debug("Block ::= '{' BlockItemList '}'\n");}
@@ -104,29 +114,20 @@ BlockItem: Decl 		{debug("BlockItem ::= Decl\n");}
 
 Stmt: LVal ASIGN Exp SEMICOLON {debug("Stmt ::= LVal '=' Exp ';'\n");}
 
-	| ID LPARENT RPARENT SEMICOLON 	{debug("Stmt ::= ID '(' ')' ';'\n");}
-	| ID LPARENT SEMICOLON 			{missParent(1, @2.first_line, @2.last_column);}
-	| ID ERR_RPARENT SEMICOLON 		{missParent(0, @1.first_line, @1.last_column);}
+	| ID LPARENT RPARENT SEMICOLON %prec MISSING_RPARENT	{debug("Stmt ::= ID '(' ')' ';'\n");}
 
 	| Block 			{debug("Stmt ::= Block\n");}
 	
-	| IF LPARENT Cond RPARENT Stmt 	{debug("Stmt ::= IF '(' Cond ')' Stmt\n");}
-	| IF LPARENT Cond Stmt 			{missParent(1, @2.first_line, @2.last_column);}
-	| IF Cond ERR_RPARENT Stmt 		{missParent(0, @1.first_line, @1.last_column);}
+	| IF LPARENT Cond RPARENT Stmt %prec NO_ELSE	{debug("Stmt ::= IF '(' Cond ')' Stmt\n");}
 
-	| IF LPARENT Cond RPARENT Stmt ELSE Stmt {debug("Stmt ::= IF '(' Cond ')' Stmt ELSE Stmt\n");}
-	| IF LPARENT Cond Stmt ELSE Stmt		{missParent(1, @2.first_line, @2.last_column);}
-	| IF Cond ERR_RPARENT Stmt ELSE Stmt	{missParent(0, @1.first_line, @1.last_column);}
+	| IF LPARENT Cond RPARENT Stmt ELSE Stmt  {debug("Stmt ::= IF '(' Cond ')' Stmt ELSE Stmt\n");}
 
 	| WHILE LPARENT Cond RPARENT Stmt {debug("Stmt ::= WHILE '(' Cond ')' Stmt\n");}
-	| WHILE LPARENT Cond Stmt		{missParent(1, @2.first_line, @2.last_column);}
-	| WHILE Cond ERR_RPARENT Stmt 	{missParent(0, @1.first_line, @1.last_column);}
 
 	| SEMICOLON 		{debug("Stmt ::= ';'\n");}
 	;
 
-Cond: ODD Exp 			{debug("Cond ::= ODD Exp\n");}
-	| Exp LT Exp 		{debug("Cond ::= Exp LT Exp\n");}
+Cond: Exp LT Exp 		{debug("Cond ::= Exp LT Exp\n");}
 	| Exp GT Exp 		{debug("Cond ::= Exp GT Exp\n");}
 	| Exp LTE Exp 		{debug("Cond ::= Exp LTE Exp\n");}
 	| Exp GTE Exp 		{debug("Cond ::= Exp GTE Exp\n");}
@@ -139,7 +140,7 @@ Cond: ODD Exp 			{debug("Cond ::= ODD Exp\n");}
 
 int yyerror(const char *msg)
 {
-	printf("%s", msg);
+	printf("%s\n", msg);
 	return 0;
 }
 

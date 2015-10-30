@@ -1,5 +1,6 @@
 #include <cstdio>
 #include <string>
+#include "msgfactory.h"
 #include "tok.h"
 // comment the next line to hide debug info
 #define DEBUG
@@ -9,6 +10,7 @@
 extern FILE *yyin;
 extern int yylex();     // lexer.cc provides yylex()
 extern int yyparse();   // parser.cc provides yyparse()
+extern MsgFactory msgFactory;
 //extern InputNode *root; // AST's root, shared with yyparse()
 
 int main(int argc, char** argv)
@@ -24,6 +26,8 @@ int main(int argc, char** argv)
         fclose(dumpfp);
     }*/
     /* root->printast(stdout, 0); */
+
+	msgFactory.summary();
 
     return 0;
 }

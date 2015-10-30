@@ -53,6 +53,7 @@ void MsgFactory::initial(const char *fileName)
 		return;
 	}
 
+	// record the start location of every line
 	int i = 0;
 	char buffer[500];
 	while (feof(source) == 0) {
@@ -101,9 +102,9 @@ void MsgFactory::showMsg(Message *msg)
 		}
 		if (cnt == 3) {
 			cnt = 0;
-			i++;
 			errorLine[j] = ' ';
-			positionLine[j] = (i+1 == line) ? '^' : ' ';
+			positionLine[j] = (i+1 == column) ? '^' : ' ';
+			i++;
 			continue;
 		}
 		errorLine[j] = buffer[i];
@@ -117,6 +118,11 @@ void MsgFactory::showMsg(Message *msg)
 
 	fprintf(stderr,"\033[0m" "%s\n" "\033[0m", errorLine);
 	fprintf(stderr,"\033[0m" "%s\n" "\033[0m", positionLine);
+}
+
+void MsgFactory::summary()
+{
+	fprintf(stderr,"\033[0m" "compiling completed: totally %lu errors, %lu warnings\n" "\033[0m", errors.size(), warnings.size());
 }
 
 /*

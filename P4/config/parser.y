@@ -61,7 +61,7 @@ Exp: LVal 				{debug("Exp ::= LVal\n");}
    | LPARENT Exp %prec MISSING_RPARENT		
    		{
 			lparent_num--;
-   			Error err = msgFactory.newError(e_rparent, @2.first_line, @2.last_column);
+   			Error err = msgFactory.newError(e_rparent, @2.last_line, @2.last_column);
 			msgFactory.showMsg(&err);
 			debug("Exp ::= '(' Exp ')' 		[error recovery]\n");
    		}
@@ -102,7 +102,7 @@ Decl: ConstDecl 		{debug("Decl ::= ConstDecl\n");}
 ConstDecl: CONST INT ConstDefList SEMICOLON {debug("ConstDecl ::= CONST INT ConstDefList ';'\n");}
 		 | CONST INT ConstDefList %prec MISSING_SEMICOLON
 		 	{
-				Error err = msgFactory.newError(e_miss_semicolon, @2.first_line, @3.last_column);
+				Error err = msgFactory.newError(e_miss_semicolon, @3.last_line, @3.last_column);
 				msgFactory.showMsg(&err);
 				debug("ConstDecl ::= CONST INT ConstDefList ';' 	[error recovery]\n");
 			}
@@ -114,7 +114,7 @@ ConstDecl: CONST INT ConstDefList SEMICOLON {debug("ConstDecl ::= CONST INT Cons
 			}
 		 | CONST ConstDefList %prec MISSING_SEMICOLON
 		 	{
-				Error err = msgFactory.newError(e_miss_semicolon, @2.first_line, @2.last_column);
+				Error err = msgFactory.newError(e_miss_semicolon, @2.last_line, @2.last_column);
 				msgFactory.showMsg(&err);
 				Warning warn = msgFactory.newWarning(w_miss_int, @2.first_line, @2.first_column);
 				msgFactory.showMsg(&warn);
@@ -133,7 +133,7 @@ ConstDef: ID ASIGN Exp {debug("ConstDef ::= ID '=' Exp\n");}
 VarDecl: INT VarList SEMICOLON {debug("VarDecl ::= INT VarList ';'\n");}
 	   | INT VarList %prec MISSING_SEMICOLON
 	   	{
-				Error err = msgFactory.newError(e_miss_semicolon, @2.first_line, @2.last_column);
+				Error err = msgFactory.newError(e_miss_semicolon, @2.last_line, @2.last_column);
 				msgFactory.showMsg(&err);
 				debug("VarDecl ::= INT VarList ';' 		[error recovery]\n");
 		}
@@ -166,7 +166,7 @@ BlockItem: Decl 		{debug("BlockItem ::= Decl\n");}
 Stmt: LVal ASIGN Exp SEMICOLON {debug("Stmt ::= LVal '=' Exp ';'\n");}
 	| LVal ASIGN Exp %prec MISSING_SEMICOLON
 		{
-			Error err = msgFactory.newError(e_miss_semicolon, @2.first_line, @3.last_column);
+			Error err = msgFactory.newError(e_miss_semicolon, @3.last_line, @3.last_column);
 			msgFactory.showMsg(&err);
 			debug("Stmt ::= LVal '=' Exp ';' 		[error recovery]\n");
 		}
@@ -175,7 +175,7 @@ Stmt: LVal ASIGN Exp SEMICOLON {debug("Stmt ::= LVal '=' Exp ';'\n");}
 	| ID LPARENT RPARENT SEMICOLON {debug("Stmt ::= ID '(' ')' ';'\n");}
 	| ID LPARENT RPARENT %prec MISSING_SEMICOLON
 		{
-			Error err = msgFactory.newError(e_miss_semicolon, @2.first_line, @3.last_column);
+			Error err = msgFactory.newError(e_miss_semicolon, @3.last_line, @3.last_column);
 			msgFactory.showMsg(&err);	
 			debug("Stmt ::= ID '(' ')' ';' 		[error recovery]\n");
 		}

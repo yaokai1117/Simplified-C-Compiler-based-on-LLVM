@@ -45,5 +45,6 @@ src/parser.cpp include/tok.h: config/parser.y
 
 .PHONY: clean
 clean:
-	rm -f bin/*.o src/lexer.cpp src/parser.cpp src/parser.output include/tok.h
+	rm -f bin/*.o  bin/compiler
+	rm -f src/lexer.cpp src/parser.cpp src/parser.output include/tok.h
 	rm -f *.png *.dot

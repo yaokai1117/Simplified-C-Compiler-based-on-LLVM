@@ -68,6 +68,7 @@ public:
 	Warning newWarning(int type, int line, int column);
 
 	void showMsg(Message *msg);
+	void summary();
 
 private:
 	string fileName;

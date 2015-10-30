@@ -4,17 +4,28 @@
 #define DEBUG
 #include "util.h"
 #include "global.h"
+#include "msgfactory.h"
+
 extern int yylex();
 extern int yyerror(const char *msg);
 extern int lparent_num;
-void missParent(int flag, int line, int column);
+
+MsgFactory msgFactory;
+
 %}
 
 %locations
+%initial-action 
+{
+    msgFactory.initial(infile_name);	
+};
 
 
 %token CONST INT IF ELSE WHILE VOID ID NUM
 %token ASIGN LBRACE RBRACE LBRACKET RBRACKET LPARENT RPARENT COMMA SEMICOLON ERR_RPARENT 
+
+%precedence MISSING_SEMICOLON
+%precedence SEMICOLON
 
 %precedence NO_ELSE
 %precedence ELSE
@@ -26,9 +37,9 @@ void missParent(int flag, int line, int column);
 %left EQ NEQ
 %left LT GT LTE GTE
 %left PLUS MINUS
-%precedence NEG POS
 %left MULT DIV MOD
 
+%precedence NEG POS
 
 %%
 
@@ -47,8 +58,20 @@ Exp: LVal 				{debug("Exp ::= LVal\n");}
    | NUM 				{debug("Exp ::= NUM\n");}
 
    | LPARENT Exp RPARENT {debug("Exp ::= '(' Exp ')'\n");}
-   | LPARENT Exp %prec MISSING_RPARENT		{missParent(1, @2.first_line, @2.last_column);}
-   | Exp ERR_RPARENT 	{missParent(0, @1.first_line, @1.last_column);}
+   | LPARENT Exp %prec MISSING_RPARENT		
+   		{
+			lparent_num--;
+   			Error err = msgFactory.newError(e_rparent, @2.first_line, @2.last_column);
+			msgFactory.showMsg(&err);
+			debug("Exp ::= '(' Exp ')' 		[error recovery]\n");
+   		}
+   | Exp ERR_RPARENT 	
+   		{
+			lparent_num++;
+   			Error err = msgFactory.newError(e_lparent, @1.first_line, @1.first_column);
+			msgFactory.showMsg(&err);
+			debug("Exp ::= '(' Exp ')' 		[error recovery]\n");
+   		}
 
    | Exp PLUS Exp 		{debug("Exp ::= Exp PLUS Exp\n");}
    | Exp MINUS Exp 		{debug("Exp ::= Exp MINUS Exp\n");}
@@ -56,10 +79,13 @@ Exp: LVal 				{debug("Exp ::= LVal\n");}
    | Exp DIV Exp 		{debug("Exp ::= Exp DIV Exp\n");}
    | Exp MOD Exp 		{debug("Exp ::= Exp MOD Exp\n");}
 
-   | Exp error  Exp 	{
-   						yyerrok; 
-						error("missing op, in line %d, column %d.\n", @1.first_line, @1.last_column);
-						}
+   | Exp error  Exp 	
+   		{
+   			yyerrok; 
+   			Error err = msgFactory.newError(e_miss_op, @2.first_line, @2.last_column - 1);
+			msgFactory.showMsg(&err);
+			debug("Exp ::= Exp Exp 		[error recovery]\n");
+		}
 
    | PLUS Exp %prec POS {debug("Exp ::= POS Exp\n");}
    | MINUS Exp %prec NEG {debug("Exp ::= NEG Exp\n");}
@@ -74,7 +100,26 @@ Decl: ConstDecl 		{debug("Decl ::= ConstDecl\n");}
 	;
 
 ConstDecl: CONST INT ConstDefList SEMICOLON {debug("ConstDecl ::= CONST INT ConstDefList ';'\n");}
-		 | CONST ConstDefList SEMICOLON {warning("\"ConstDecl ::= CONST ConstDefList ';'\" Expect 'int'\n");} 
+		 | CONST INT ConstDefList %prec MISSING_SEMICOLON
+		 	{
+				Error err = msgFactory.newError(e_miss_semicolon, @2.first_line, @3.last_column);
+				msgFactory.showMsg(&err);
+				debug("ConstDecl ::= CONST INT ConstDefList ';' 	[error recovery]\n");
+			}
+		 | CONST ConstDefList SEMICOLON 
+		 	{
+				Warning warn = msgFactory.newWarning(w_miss_int, @2.first_line, @2.first_column);
+				msgFactory.showMsg(&warn);
+				debug("ConstDecl ::= CONST INT ConstDefList ';' 	[error recovery]\n");
+			}
+		 | CONST ConstDefList %prec MISSING_SEMICOLON
+		 	{
+				Error err = msgFactory.newError(e_miss_semicolon, @2.first_line, @2.last_column);
+				msgFactory.showMsg(&err);
+				Warning warn = msgFactory.newWarning(w_miss_int, @2.first_line, @2.first_column);
+				msgFactory.showMsg(&warn);
+				debug("ConstDecl ::= CONST INT ConstDefList ';' 	[error recovery]\n");
+			}
 		 ;
 
 ConstDefList: ConstDef 	{debug("ConstDefList ::= ConstDef\n");}
@@ -86,6 +131,12 @@ ConstDef: ID ASIGN Exp {debug("ConstDef ::= ID '=' Exp\n");}
 		;
 
 VarDecl: INT VarList SEMICOLON {debug("VarDecl ::= INT VarList ';'\n");}
+	   | INT VarList %prec MISSING_SEMICOLON
+	   	{
+				Error err = msgFactory.newError(e_miss_semicolon, @2.first_line, @2.last_column);
+				msgFactory.showMsg(&err);
+				debug("VarDecl ::= INT VarList ';' 		[error recovery]\n");
+		}
 	   ;
 
 VarList: Var			{debug("VarList ::= Var\n");}
@@ -113,8 +164,21 @@ BlockItem: Decl 		{debug("BlockItem ::= Decl\n");}
 		 ;
 
 Stmt: LVal ASIGN Exp SEMICOLON {debug("Stmt ::= LVal '=' Exp ';'\n");}
+	| LVal ASIGN Exp %prec MISSING_SEMICOLON
+		{
+			Error err = msgFactory.newError(e_miss_semicolon, @2.first_line, @3.last_column);
+			msgFactory.showMsg(&err);
+			debug("Stmt ::= LVal '=' Exp ';' 		[error recovery]\n");
+		}
 
-	| ID LPARENT RPARENT SEMICOLON %prec MISSING_RPARENT	{debug("Stmt ::= ID '(' ')' ';'\n");}
+
+	| ID LPARENT RPARENT SEMICOLON {debug("Stmt ::= ID '(' ')' ';'\n");}
+	| ID LPARENT RPARENT %prec MISSING_SEMICOLON
+		{
+			Error err = msgFactory.newError(e_miss_semicolon, @2.first_line, @3.last_column);
+			msgFactory.showMsg(&err);	
+			debug("Stmt ::= ID '(' ')' ';' 		[error recovery]\n");
+		}
 
 	| Block 			{debug("Stmt ::= Block\n");}
 	
@@ -143,14 +207,5 @@ int yyerror(const char *msg)
 	printf("%s\n", msg);
 	return 0;
 }
-
-void missParent(int flag, int line, int column)
-{
-	char missing = flag ? ')' : '(';
-	int inc = flag ? -1 : 1;
-	lparent_num += inc; 
-	error("Expect '%c', in line %d, column %d\n", missing, line, column);
-}
-
 
 

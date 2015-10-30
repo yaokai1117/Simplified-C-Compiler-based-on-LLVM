@@ -1,4 +1,5 @@
-#include <stdio.h>
+#include <cstdio>
+#include <cstring>
 #include <getopt.h>
 #include "util.h"
 #include "global.h"
@@ -35,7 +36,7 @@ bool handle_opt(int argc, char** argv)
                 version_flag = 1;
                 break;
             case 'o':
-                outfile_name = optarg;
+                strcpy(outfile_name, optarg);
                 break;
             case 'd':
 				error("Not support yet\n");
@@ -72,8 +73,8 @@ bool handle_opt(int argc, char** argv)
         return false;
     }
     if (optind < argc)
-        infile_name = argv[optind];
-    if (infile_name == NULL)
+        strcpy(infile_name, argv[optind]);
+    if (infile_name[0] == '\0')
         infp = stdin;
     else
     {
@@ -84,7 +85,7 @@ bool handle_opt(int argc, char** argv)
             return false;
         }
     }
-    if (outfile_name == NULL)
+    if (outfile_name[0] == '\0')
         outfp = stdout;
     else
     {

@@ -16,7 +16,7 @@ void sort()
 		while (j > 0) {
 			if (a[j] <= key)
 				flag = 0;
-			if (!flag) {
+			if (flag == 1) {
 				a[j+1] = a[j];
 				j = j - 1;
 			}

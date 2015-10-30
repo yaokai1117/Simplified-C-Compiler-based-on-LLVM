@@ -1,8 +1,16 @@
 void main()
 {
-	int a;
-	if (1 > 0)
-		a = 1;
-	else
-		a = 0;
+
+	if (a == 1) 
+		if (b == 1)
+			c = 1;
+		else {
+		b = 4;
+		}
+
+	while (1 == 3) {
+		b = 4;
+	}
+
+	hello();
 }

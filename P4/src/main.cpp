@@ -1,11 +1,12 @@
 #include <cstdio>
+#include <string>
 #include "tok.h"
 // comment the next line to hide debug info
 #define DEBUG
 #include "util.h"
 #include "global.h"
 
-extern FILE *yyin;      // flex uses yyin as input file's pointer
+extern FILE *yyin;
 extern int yylex();     // lexer.cc provides yylex()
 extern int yyparse();   // parser.cc provides yyparse()
 //extern InputNode *root; // AST's root, shared with yyparse()

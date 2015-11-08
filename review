@@ -2,3 +2,9 @@ P1
 使用了shell和Makefile，Makefile写得略粗暴
 test3中的while循环条件不符合C1语法
 test4考虑的问题很独特
+
+P2
+代码完成了所有功能
+
+P3
+文档详细，生成了while对应的代码。

@@ -1,25 +1,26 @@
 CC=clang++
 LEX=lex
 YACC=bison
-CFLAGS=-I include
+CFLAGS= -g -I include
 YFLAGS=
 LFLAGS=
 
 all: bin/compiler
 
-bin/compiler: bin/lexer.o bin/parser.o bin/main.o bin/util.o bin/global.o bin/msgfactory.o
+bin/compiler: bin/lexer.o bin/parser.o bin/main.o bin/util.o bin/global.o bin/msgfactory.o bin/dumpdot.o bin/node.o
 	@mkdir -p bin
 	$(CC) $(CFLAGS) -o $@ $^
 
-bin/main.o: src/main.cpp include/tok.h include/util.h include/global.h
+
+bin/main.o: src/main.cpp include/tok.h include/util.h include/global.h include/node.h
 	@mkdir -p bin
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-bin/parser.o: src/parser.cpp include/util.h include/global.h src/msgfactory.cpp include/msgfactory.h
+bin/parser.o: src/parser.cpp include/util.h include/global.h include/msgfactory.h include/node.h
 	@mkdir -p bin
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-bin/lexer.o: src/lexer.cpp include/tok.h
+bin/lexer.o: src/lexer.cpp include/tok.h include/node.h
 	@mkdir -p bin
 	$(CC) $(CFLAGS) -c -o $@ $<
 
@@ -31,9 +32,18 @@ bin/global.o: src/global.cpp include/global.h
 	@mkdir -p bin
 	$(CC) $(CFLAGS) -c -o $@ $<
 
+bin/node.o: src/node.cpp include/node.h include/dumpdot.h
+	@mkdir -p bin
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+bin/dumpdot.o: src/dumpdot.cpp include/dumpdot.h 
+	@mkdir -p bin
+	$(CC) $(CFLAGS) -c -o $@ $<
+
 bin/msgfactory.o: src/msgfactory.cpp include/msgfactory.h include/global.h include/util.h
 	@mkdir -p bin
 	$(CC) $(CFLAGS) -c -o $@ $<
+
 
 src/lexer.cpp: config/lexer.l config/parser.y
 	$(LEX) $(LFLAGS) -o $@ $<

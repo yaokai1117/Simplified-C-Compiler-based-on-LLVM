@@ -35,12 +35,8 @@ bool handle_opt(int argc, char** argv)
             case 'v':
                 version_flag = 1;
                 break;
-            case 'o':
-                strcpy(outfile_name, optarg);
-                break;
             case 'd':
-				error("Not support yet\n");
-                //dumpfile_name = optarg;
+                dumpfile_name = optarg;
                 break;
             case '?':
                 error("Unknown option -%c\n", optopt);
@@ -63,13 +59,12 @@ bool handle_opt(int argc, char** argv)
         printf("usage: asgn2ast [options] [file]\n");
         printf("-h  --help     print this usage and exit\n");
         printf("-v  --version  print version and exit\n");
-        printf("-o <file>      Not support yet. place the output into <file>\n");
-        printf("-d <file>      Not support yet. dump AST into <file>\n");
+        printf("-d <file>      dump AST into <file>\n");
         return false;
     }
     if (version_flag)
     {
-        printf("C1 compiler 1.0\n");
+        printf("C1 compiler 1.2\n");
         return false;
     }
     if (optind < argc)
@@ -85,18 +80,7 @@ bool handle_opt(int argc, char** argv)
             return false;
         }
     }
-    if (outfile_name[0] == '\0')
-        outfp = stdout;
-    else
-    {
-        outfp = fopen(outfile_name, "w");
-        if (outfp == NULL)
-        {
-            error("Can not open outfile %s\n", outfile_name);
-            return false;
-        }
-    }
-    /*if (dumpfile_name == NULL)
+    if (dumpfile_name == NULL)
         dumpfp = NULL;
     else
     {
@@ -106,6 +90,6 @@ bool handle_opt(int argc, char** argv)
             error("Can not open dumpfile %s\n", dumpfile_name);
             return false;
         }
-    }*/
+    }
     return true;
 }

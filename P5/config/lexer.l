@@ -1,8 +1,9 @@
 /* Scanner for simple C1 source code */
 
 %{
-#include "tok.h"
 #include <cctype>
+#include <string>
+#include "node.h"
 #include "tok.h"
 
 int yycolumn = 1;
@@ -32,18 +33,18 @@ num 		{digit}+
 
 {ws} 		{/*do nothing*/}
 {blockcomment} 	{
-				int cnt = 0;
-				int newline_flag = 0;
-				for (int i = 0; yytext[i] != '\0'; i++) {
-					if (yytext[i] == '\n') {
-						newline_flag = 1;
-						cnt = 0;
+					int cnt = 0;
+					int newline_flag = 0;
+					for (int i = 0; yytext[i] != '\0'; i++) {
+						if (yytext[i] == '\n') {
+							newline_flag = 1;
+							cnt = 0;
+						}
+						cnt++;
 					}
-					cnt++;
+					if (newline_flag == 1)
+						yycolumn = cnt;
 				}
-				if (newline_flag == 1)
-					yycolumn = cnt;
-			}
 {linecomment} 	{}
 const 		{return CONST;}
 int 		{return INT;}
@@ -51,8 +52,14 @@ if 			{return IF;}
 else 		{return ELSE;}
 while  		{return WHILE;}
 void 		{return VOID;}
-{id} 		{return ID;}
-{num} 		{return NUM;}
+{id} 		{
+				yylval.name = new std::string(yytext);
+				return ID;
+			}
+{num} 		{
+				yylval.num = atoi(yytext);
+				return NUM;
+			}
 "+" 		{return PLUS;}
 "-" 		{return MINUS;}
 "*" 		{return MULT;}
@@ -64,11 +71,11 @@ void 		{return VOID;}
 "]" 		{return RBRACKET;}
 "(" 		{lparent_num++; return LPARENT;}
 ")" 		{
-			lparent_num--;
-			if (lparent_num >= 0) 
-				return RPARENT;
-			else 
-				return ERR_RPARENT;
+				lparent_num--;
+				if (lparent_num >= 0) 
+					return RPARENT;
+				else 
+					return ERR_RPARENT;
 			}
 "=" 		{return ASIGN;}
 "," 		{return COMMA;}

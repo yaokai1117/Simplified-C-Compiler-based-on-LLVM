@@ -1,0 +1,21 @@
+P5:
+
+1.编译运行
+	可使用脚本bin/run.sh自动编译并运行测试
+
+	$bin/run
+
+	也可make编译，手动运行
+
+	$make
+	$bin/compiler test/test1.c -d asgn.dot
+	$./trans.sh
+
+
+2.测试样例说明
+	test/test1.c------简单地测试C1的各种语法,包含注释，无error
+	test/test2.c------一个冒泡排序程序
+	test/warn.c-------test1.c加了一个warning
+	test/error.c------含4个error和1个warning，其中有一个加在错误前的跨行注释，用以演示对注释的column的处理
+
+

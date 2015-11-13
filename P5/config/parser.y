@@ -59,6 +59,10 @@ void clearAstNodes();
 %type <node> Block BlockItem Stmt Cond
 %type <nodeList> ExpList ConstDefList VarList BlockItemList
 
+%destructor {
+	delete ($$);
+} ID
+
 %%
 
 CompUnit: Decl 				
@@ -66,6 +70,7 @@ CompUnit: Decl
 				debug("CompUnit ::= Decl\n");
 				if (!errorFlag) {
 					root = new CompUnitNode($1);
+					root->setLoc((Loc*)&(@$));
 					astNodes.push_back(root);
 				}
 			}
@@ -74,20 +79,25 @@ CompUnit: Decl
 				debug("CompUnit ::= FuncDef\n");
 				if (!errorFlag) {
 					root = new CompUnitNode($1);
+					root->setLoc((Loc*)&(@$));
 					astNodes.push_back(root);
 				}
 			}
 		| CompUnit Decl 	
 			{
 				debug("CompUnit ::= CompUnit Decl\n");
-				if (!errorFlag) 
+				if (!errorFlag) {
 					root->append($2);
+					root->setLoc((Loc*)&(@$));
+				}
 			}
 		| CompUnit FuncDef 	
 			{
 				debug("CompUnit ::= CompUnit FuncDef\n");
-				if (!errorFlag)
+				if (!errorFlag) {
 					root->append($2);
+					root->setLoc((Loc*)&(@$));
+				}
 			}
 		;
 
@@ -140,6 +150,7 @@ Exp: LVal
 			debug("Exp ::= '(' Exp ')'\n");
 			if (!errorFlag) {
 				$$ = $2;
+				$$->setLoc((Loc*)&(@$));
 			}
 		}
    | LPARENT Exp %prec MISSING_RPARENT		
@@ -258,6 +269,7 @@ ExpList: Exp
 				if (!errorFlag) {
 					$1->append($3);
 					$$ = $1;
+					$$->setLoc((Loc*)&(@$));
 				}
 			}
 	   ;
@@ -315,6 +327,7 @@ ConstDefList: ConstDef
 					if (!errorFlag) {
 						$1->append($3);
 						$$ = $1;
+						$$->setLoc((Loc*)&(@$));
 					}
 				}
 			;
@@ -383,6 +396,7 @@ VarList: Var
 				if (!errorFlag) {
 					$1->append($3);
 					$$ = $1;
+					$$->setLoc((Loc*)&(@$));
 				}
 			}
 	   ;
@@ -489,6 +503,7 @@ BlockItemList: BlockItem
 					if (!errorFlag) {
 						$1->append($2);
 						$$ = $1;
+						$$->setLoc((Loc*)&(@$));
 					}
 				}
 			 ;

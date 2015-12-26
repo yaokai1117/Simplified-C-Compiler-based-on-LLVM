@@ -1,4 +1,10 @@
 *~*
 *.o
+*.out
 *.a
 *.so
+
+.cproject/*
+.project/*
+.cproject
+.project

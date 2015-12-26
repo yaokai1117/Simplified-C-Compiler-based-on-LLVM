@@ -6,7 +6,14 @@
 #include <list>
 #include "dumpdot.h"
 
+#include "llvm/IR/Verifier.h"
+#include "llvm/IR/DerivedTypes.h"
+#include "llvm/IR/IRBuilder.h"
+#include "llvm/IR/LLVMContext.h"
+#include "llvm/IR/Module.h"
+
 using namespace std;
+
 
 typedef enum {
 	// exp types
@@ -62,6 +69,7 @@ public:
 	virtual ~Node();
     void setLoc(Loc* loc);
     virtual int dumpdot(DumpDOT *dumper) = 0;
+	virtual llvm::Value *codegen() = 0;
 
     NodeType type;
     Loc* loc;
@@ -74,6 +82,7 @@ public:
 	void append(Node *node);
 	void dumpdot(DumpDOT *dumper, int nRoot, int pos);
 	int dumpdot(DumpDOT *dumper);
+	virtual llvm::Value *codegen();
 
 	list<Node*> nodes;
 };
@@ -82,6 +91,7 @@ public:
 class ExpNode : public Node {
 public:
     virtual int dumpdot(DumpDOT *dumper) = 0;
+	virtual llvm::Value *codegen() = 0;
 };
 
 
@@ -90,6 +100,7 @@ public:
     NumNode(int val);
 	~NumNode();
     int dumpdot(DumpDOT *dumper);
+	virtual llvm::Value *codegen();
 
     int val;
 };
@@ -100,6 +111,7 @@ public:
     BinaryExpNode(char op, ExpNode *lhs, ExpNode *rhs);
 	~BinaryExpNode();
     int dumpdot(DumpDOT *dumper);
+	virtual llvm::Value *codegen();
 
     char op;
     ExpNode *lhs, *rhs;
@@ -111,6 +123,7 @@ public:
     UnaryExpNode(char op, ExpNode *operand);
 	~UnaryExpNode();
     int dumpdot(DumpDOT *dumper);
+	virtual llvm::Value *codegen();
 
     char op;
     ExpNode *operand;
@@ -120,6 +133,7 @@ public:
 class LValNode : public ExpNode {
 public:
     virtual int dumpdot(DumpDOT *dumper) = 0;
+	virtual llvm::Value *codegen() = 0;
 };
 
 
@@ -128,6 +142,7 @@ public:
     IdNode(std::string* name);
 	~IdNode();
     int dumpdot(DumpDOT *dumper);
+	virtual llvm::Value *codegen();
 
     std::string *name;
 };
@@ -138,6 +153,7 @@ public:
 	ArrayItemNode(std::string *name, ExpNode *index);
 	~ArrayItemNode();
     int dumpdot(DumpDOT *dumper);
+	virtual llvm::Value *codegen() {return 0;};
 
 	std::string *name;
 	ExpNode *index;
@@ -147,6 +163,7 @@ public:
 class ConstDefNode : public Node {
 public:
     virtual int dumpdot(DumpDOT *dumper) = 0;
+	virtual llvm::Value *codegen() = 0;
 };
 
 
@@ -155,6 +172,7 @@ public:
 	IdConstDefNode(std::string *name, ExpNode *value);
 	~IdConstDefNode();
     int dumpdot(DumpDOT *dumper);
+	virtual llvm::Value *codegen();
 
 	std::string *name;
 	ExpNode *value;
@@ -166,6 +184,7 @@ public:
 	ArrayConstDefNode(std::string *name, ExpNode *size, NodeList *values);
 	~ArrayConstDefNode();
     int dumpdot(DumpDOT *dumper);
+	virtual llvm::Value *codegen() {return 0;};
 	
 	bool hasSize;
 	std::string *name;
@@ -177,6 +196,7 @@ public:
 class VarDefNode : public Node {
 public:
     virtual int dumpdot(DumpDOT *dumper) = 0;
+	virtual llvm::Value *codegen() = 0;
 };
 
 
@@ -185,6 +205,7 @@ public:
 	IdVarDefNode(std::string *name, ExpNode *value);
 	~IdVarDefNode();
     int dumpdot(DumpDOT *dumper);
+	virtual llvm::Value *codegen();
 	
 	bool isAssigned;
 	std::string *name;
@@ -197,6 +218,7 @@ public:
 	ArrayVarDefNode(std::string *name, ExpNode *size, NodeList *values);
 	~ArrayVarDefNode();
     int dumpdot(DumpDOT *dumper);
+	virtual llvm::Value *codegen() {return 0;};
 
 	bool isAssigned;
 	bool hasSize;
@@ -209,18 +231,21 @@ public:
 class BlockItemNode : public Node {
 public:
     virtual int dumpdot(DumpDOT *dumper) = 0;
+	virtual llvm::Value *codegen() = 0;
 };
 
 
 class DeclNode : public BlockItemNode {
 public:
     virtual int dumpdot(DumpDOT *dumper) = 0;
+	virtual llvm::Value *codegen() = 0;
 };
 
 
 class StmtNode : public BlockItemNode{
 public:
     virtual int dumpdot(DumpDOT *dumper) = 0;
+	virtual llvm::Value *codegen() = 0;
 };
 
 
@@ -229,6 +254,7 @@ public:
 	BlockNode(NodeList *blockItems);
 	~BlockNode();
     int dumpdot(DumpDOT *dumper);
+	virtual llvm::Value *codegen();
 
 	NodeList *blockItems;
 };
@@ -239,6 +265,7 @@ public:
 	ConstDeclNode(NodeList *defList);
 	~ConstDeclNode();
     int dumpdot(DumpDOT *dumper);
+	virtual llvm::Value *codegen();
 
 	NodeList *defList;
 };
@@ -249,6 +276,7 @@ public:
 	VarDeclNode(NodeList *defList);
 	~VarDeclNode();
     int dumpdot(DumpDOT *dumper);
+	virtual llvm::Value *codegen();
 	
 	NodeList *defList;
 };
@@ -259,6 +287,7 @@ public:
 	AssignStmtNode(LValNode *lval, ExpNode *exp);
 	~AssignStmtNode();
     int dumpdot(DumpDOT *dumper);
+	virtual llvm::Value *codegen() {return 0;};
 	
 	LValNode *lval;
 	ExpNode *exp;
@@ -270,6 +299,7 @@ public:
 	FunCallStmtNode(std::string *name);
 	~FunCallStmtNode();
     int dumpdot(DumpDOT *dumper);
+    llvm::Function *codegen() {return 0;};
 
 	std::string *name;
 };
@@ -280,6 +310,7 @@ public:
 	BlockStmtNode(BlockNode *block);
 	~BlockStmtNode();
     int dumpdot(DumpDOT *dumper);
+	virtual llvm::Value *codegen() {return 0;};
 
 	BlockNode *block;
 };
@@ -290,6 +321,7 @@ public:
 	CondNode(OpType op, ExpNode *lhs, ExpNode *rhs);
 	~CondNode();
     int dumpdot(DumpDOT *dumper);
+	virtual llvm::Value *codegen() {return 0;};
 
 	OpType op;
 	ExpNode *lhs;
@@ -302,6 +334,7 @@ public:
 	IfStmtNode(CondNode *cond, StmtNode *then_stmt, StmtNode *else_stmt);
 	~IfStmtNode();
     int dumpdot(DumpDOT *dumper);
+	virtual llvm::Value *codegen() {return 0;};
 
 	bool hasElse;
 	CondNode *cond;
@@ -315,6 +348,7 @@ public:
 	WhileStmtNode(CondNode *cond, StmtNode *do_stmt);
 	~WhileStmtNode();
     int dumpdot(DumpDOT *dumper);
+	virtual llvm::Value *codegen() {return 0;};
 
 	CondNode *cond;
 	StmtNode *do_stmt;
@@ -325,6 +359,7 @@ public:
 	FuncDefNode(std::string *name, BlockNode *block);
 	~FuncDefNode();
     int dumpdot(DumpDOT *dumper);
+	virtual llvm::Function *codegen();
 
 	std::string *name;
 	BlockNode *block;
@@ -336,6 +371,7 @@ public:
 	~CompUnitNode();
     int dumpdot(DumpDOT *dumper);
 	void append(Node *node);
+	virtual llvm::Value *codegen();
 
 	list<Node*> nodes;
 };

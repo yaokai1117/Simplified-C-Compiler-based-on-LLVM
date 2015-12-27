@@ -153,7 +153,7 @@ public:
 	ArrayItemNode(std::string *name, ExpNode *index);
 	~ArrayItemNode();
     int dumpdot(DumpDOT *dumper);
-	virtual llvm::Value *codegen() {return 0;};
+	virtual llvm::Value *codegen();
 
 	std::string *name;
 	ExpNode *index;
@@ -184,7 +184,7 @@ public:
 	ArrayConstDefNode(std::string *name, ExpNode *size, NodeList *values);
 	~ArrayConstDefNode();
     int dumpdot(DumpDOT *dumper);
-	virtual llvm::Value *codegen() {return 0;};
+	virtual llvm::Value *codegen();
 	
 	bool hasSize;
 	std::string *name;
@@ -218,7 +218,7 @@ public:
 	ArrayVarDefNode(std::string *name, ExpNode *size, NodeList *values);
 	~ArrayVarDefNode();
     int dumpdot(DumpDOT *dumper);
-	virtual llvm::Value *codegen() {return 0;};
+	virtual llvm::Value *codegen();
 
 	bool isAssigned;
 	bool hasSize;
@@ -287,7 +287,7 @@ public:
 	AssignStmtNode(LValNode *lval, ExpNode *exp);
 	~AssignStmtNode();
     int dumpdot(DumpDOT *dumper);
-	virtual llvm::Value *codegen() {return 0;};
+	virtual llvm::Value *codegen();
 	
 	LValNode *lval;
 	ExpNode *exp;
@@ -299,7 +299,7 @@ public:
 	FunCallStmtNode(std::string *name);
 	~FunCallStmtNode();
     int dumpdot(DumpDOT *dumper);
-    llvm::Function *codegen() {return 0;};
+    llvm::Value *codegen();
 
 	std::string *name;
 };
@@ -310,7 +310,7 @@ public:
 	BlockStmtNode(BlockNode *block);
 	~BlockStmtNode();
     int dumpdot(DumpDOT *dumper);
-	virtual llvm::Value *codegen() {return 0;};
+	virtual llvm::Value *codegen();
 
 	BlockNode *block;
 };
@@ -321,7 +321,7 @@ public:
 	CondNode(OpType op, ExpNode *lhs, ExpNode *rhs);
 	~CondNode();
     int dumpdot(DumpDOT *dumper);
-	virtual llvm::Value *codegen() {return 0;};
+	virtual llvm::Value *codegen();
 
 	OpType op;
 	ExpNode *lhs;
@@ -334,7 +334,7 @@ public:
 	IfStmtNode(CondNode *cond, StmtNode *then_stmt, StmtNode *else_stmt);
 	~IfStmtNode();
     int dumpdot(DumpDOT *dumper);
-	virtual llvm::Value *codegen() {return 0;};
+	virtual llvm::Value *codegen();
 
 	bool hasElse;
 	CondNode *cond;
@@ -348,7 +348,7 @@ public:
 	WhileStmtNode(CondNode *cond, StmtNode *do_stmt);
 	~WhileStmtNode();
     int dumpdot(DumpDOT *dumper);
-	virtual llvm::Value *codegen() {return 0;};
+	virtual llvm::Value *codegen();
 
 	CondNode *cond;
 	StmtNode *do_stmt;

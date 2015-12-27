@@ -1,7 +1,0 @@
-const int c = 1 + 2 + (-5);
-
-void main()
-{
-	int a = 10;
-	int b = a + c;
-}

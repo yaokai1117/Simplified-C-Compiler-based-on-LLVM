@@ -147,8 +147,7 @@ Exp: LVal
    | LPARENT Exp %prec MISSING_RPARENT		
    		{
 			lparent_num--;
-   			Error err = msgFactory.newError(e_rparent, @2.last_line, @2.last_column);
-			msgFactory.showMsg(&err);
+   			msgFactory.newError(e_rparent, @2.last_line, @2.last_column);
 			if (!errorFlag) {
 				errorFlag = true;
 				clearAstNodes();	
@@ -157,8 +156,7 @@ Exp: LVal
    | Exp ERR_RPARENT 	
    		{
 			lparent_num++;
-   			Error err = msgFactory.newError(e_lparent, @1.first_line, @1.first_column);
-			msgFactory.showMsg(&err);
+   			msgFactory.newError(e_lparent, @1.first_line, @1.first_column);
 			if (!errorFlag) {
 				errorFlag = true;
 				clearAstNodes();	
@@ -209,8 +207,7 @@ Exp: LVal
    | Exp error  Exp 	
    		{
    			yyerrok; 
-   			Error err = msgFactory.newError(e_miss_op, @2.first_line, @2.last_column - 1);
-			msgFactory.showMsg(&err);
+   			msgFactory.newError(e_miss_op, @2.first_line, @2.last_column - 1);
 			if (!errorFlag) {
 				errorFlag = true;
 				clearAstNodes();
@@ -277,8 +274,7 @@ ConstDecl: CONST INT ConstDefList SEMICOLON
 			}
 		 | CONST ConstDefList SEMICOLON 
 		 	{
-				Warning warn = msgFactory.newWarning(w_miss_int, @2.first_line, @2.first_column);
-				msgFactory.showMsg(&warn);
+				msgFactory.newWarning(w_miss_int, @2.first_line, @2.first_column);
 				if (!errorFlag) {
 					$$ = new ConstDeclNode($2);
 					$$->setLoc((Loc*)&(@$));
@@ -336,6 +332,16 @@ ConstDef: ID ASIGN Exp
 				}
 				else {
 					delete $1;
+				}
+			}
+   		| ID LBRACKET Exp RBRACKET 
+			{
+				yyerrok; 
+   				msgFactory.newError(e_const_decl_not_init, @1.first_line, @1.last_column);
+				delete $1;
+				if (!errorFlag) {
+					errorFlag = true;
+					clearAstNodes();
 				}
 			}
 		;

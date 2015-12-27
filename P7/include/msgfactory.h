@@ -17,10 +17,14 @@ enum MsgType {
 	e_lparent,
 	e_miss_op,
 	e_miss_semicolon,
+	e_const_decl_not_init,
 
 	e_global_init_not_constant,
 	e_undeclared_identifier,
-	e_redefinition_of_function
+	e_redefinition_of_function,
+	e_unknown_function,
+	e_redefinition_of_identifier,
+	e_assign_to_constant
 };
 
 // base class of compiling message

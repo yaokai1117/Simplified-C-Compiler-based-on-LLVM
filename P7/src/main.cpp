@@ -6,8 +6,11 @@
 #include "util.h"
 #include "global.h"
 
+#include "llvm/IR/DerivedTypes.h"
+#include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Module.h"
+#include "llvm/IR/Verifier.h"
 
 extern FILE *yyin;
 
@@ -39,13 +42,18 @@ int main(int argc, char** argv)
     }
 
     // debug
+    std::string ll_file_name = string(infile_name).substr(0, string(infile_name).rfind('.')) + string(".ll");
     llvm::LLVMContext &Context = llvm::getGlobalContext();
     TheModule = new llvm::Module("my cool jit", Context);
 
+
     if (!errorFlag)
     	root->codegen();
-    if (!errorFlag)
+    if (!errorFlag) {
+        freopen(ll_file_name.c_str(), "w", stderr);
     	TheModule->dump();
+    }
+
     // end debug
 
     msgFactory.summary();

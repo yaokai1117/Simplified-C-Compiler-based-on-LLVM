@@ -17,9 +17,14 @@ map<int, string> createMsgTable()
 	t[e_lparent] = string("expected '('");
 	t[e_miss_op] = string("expected an operation");
 	t[e_miss_semicolon] = string("expected ';'");
+	t[e_const_decl_not_init] = string("a constant should be initialized during its declaration");
+
 	t[e_global_init_not_constant] = string("global variables can only be initialized by constant value");
 	t[e_undeclared_identifier] = string("use of undeclared identifier");
 	t[e_redefinition_of_function] = string("redefinition fo function");
+	t[e_unknown_function] = string("unknown function reference");
+	t[e_redefinition_of_identifier] = string("redefinition of identifier");
+	t[e_assign_to_constant] = string("assignment to a constant is illegal");
 	return t;
 }
 
@@ -30,14 +35,14 @@ map<int, string> MsgTable = createMsgTable();
 // implementation of method in Error class
 void Error::show()
 {
-	fprintf(stderr, "\033[31m""%s\n""\033[0m", MsgTable[type].c_str());
+	fprintf(stdout, "\033[31m""%s\n""\033[0m", MsgTable[type].c_str());
 }
 
 
 // implementation of method in Warning class
 void Warning::show()
 {
-	fprintf(stderr, "\033[33m""%s\n""\033[0m", MsgTable[type].c_str());
+	fprintf(stdout, "\033[33m""%s\n""\033[0m", MsgTable[type].c_str());
 }
 
 
@@ -57,7 +62,7 @@ void MsgFactory::initial(const char *fileName)
 
 	source = fopen(fileName, "r");
 	if (source == NULL) {
-		fprintf(stderr, "MsgFactory can not open source file %s\n", fileName);
+		fprintf(stdout, "MsgFactory can not open source file %s\n", fileName);
 		return;
 	}
 
@@ -94,7 +99,7 @@ void MsgFactory::showMsg(Message *msg)
 	fseek(source, lineOffset[line-1], SEEK_SET);
 	fgets(buffer, 500, source);
 
-	fprintf(stderr,"\033[0m" "%s: %d:%d: " "\033[0m", fileName.c_str(), msg->line, msg->column);
+	fprintf(stdout,"\033[0m" "%s: %d:%d: " "\033[0m", fileName.c_str(), msg->line, msg->column);
 	msg->show();
 
 
@@ -124,13 +129,17 @@ void MsgFactory::showMsg(Message *msg)
 	errorLine[j] = '\0';
 	positionLine[j] = '\0';
 
-	fprintf(stderr,"\033[0m" "%s\n" "\033[0m", errorLine);
-	fprintf(stderr,"\033[0m" "%s\n" "\033[0m", positionLine);
+	fprintf(stdout,"\033[0m" "%s\n" "\033[0m", errorLine);
+	fprintf(stdout,"\033[0m" "%s\n" "\033[0m", positionLine);
 }
 
 void MsgFactory::summary()
 {
-	fprintf(stderr,"\033[0m" "compiling completed: totally %lu errors, %lu warnings\n" "\033[0m", errors.size(), warnings.size());
+	for (list<Warning>::iterator it = warnings.begin(); it != warnings.end(); it++)
+		showMsg(&*it);
+	for (list<Error>::iterator it = errors.begin(); it != errors.end(); it++)
+		showMsg(&*it);
+	fprintf(stdout,"\033[0m" "compiling completed: totally %lu errors, %lu warnings\n" "\033[0m", errors.size(), warnings.size());
 }
 
 /*

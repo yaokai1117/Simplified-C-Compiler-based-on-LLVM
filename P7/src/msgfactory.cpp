@@ -25,6 +25,7 @@ map<int, string> createMsgTable()
 	t[e_unknown_function] = string("unknown function reference");
 	t[e_redefinition_of_identifier] = string("redefinition of identifier");
 	t[e_assign_to_constant] = string("assignment to a constant is illegal");
+	t[e_argument_unmatch] = string("function argument unmatch");
 	return t;
 }
 

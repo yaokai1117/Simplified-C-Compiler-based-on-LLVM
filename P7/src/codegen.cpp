@@ -619,11 +619,28 @@ Value *FunCallStmtNode::codegen()
 	Function *calleeF = TheModule->getFunction(*name);
 	if (calleeF == 0) {
 		errorFlag = true;
-		msgFactory.newError(e_global_init_not_constant, loc->first_line, loc->first_column);
+		msgFactory.newError(e_unknown_function, loc->first_line, loc->first_column);
 		return 0;
 	}
 
-	std::vector<Value *> argsV(0);
+	std::list<Node *> arguments;
+	if (hasArgs)
+		arguments = argv->nodes;
+
+	// check for argument mismatch error
+	if (arguments.size() != calleeF->arg_size()) {
+		errorFlag = true;
+		msgFactory.newError(e_argument_unmatch, loc->first_line, loc->first_column);
+		return 0;
+	}
+
+	std::vector<Value *> argsV;
+	for (std::list<Node *>::iterator it = arguments.begin();
+			it != arguments.end(); it++) {
+		argsV.push_back((*it)->codegen());
+		if (argsV.back() == 0)
+			return 0;
+	}
 
 	return Builder.CreateCall(calleeF, argsV);
 
@@ -756,14 +773,20 @@ Function *FuncDefNode::codegen()
 	ConstLocalTableStack[StackPtr] = new std::map<std::string, AllocaInst *>;
 	StackPtr++;
 
-	std::vector<Type *> Ints(0);
+	std::map<std::string, AllocaInst *> &LocalVariables = *LocalTableStack[StackPtr-1];
+
+	std::list<Node *> argNames;
+	if (hasArgs)
+		argNames = argv->nodes;
+
+	std::vector<Type *> Ints(argNames.size(), Type::getInt32Ty(getGlobalContext()));
 	FunctionType *FT =
 			FunctionType::get(Type::getVoidTy(getGlobalContext()), Ints, false);
 	Function *F =
 	      Function::Create(FT, Function::ExternalLinkage, name->c_str(), TheModule);
 
 
-	// If F conflicted, there was already something named 'Name'.
+	// sf F conflicted, there was already something named 'Name'.
 	if (F->getName() != *name) {
 		F->eraseFromParent();
 		errorFlag = true;
@@ -771,8 +794,25 @@ Function *FuncDefNode::codegen()
 		return 0;
 	}
 
+	// set names for all arguments
+	Function::arg_iterator aIt = F->arg_begin();
+	for (std::list<Node *>::iterator it = argNames.begin();
+			it != argNames.end(); it++, aIt++) {
+		IdNode *arg = (IdNode *)(*it);
+		aIt->setName(*(arg->name));
+	}
+
+	// insert entry block
 	BasicBlock *BB = BasicBlock::Create(getGlobalContext(), "entry", F);
 	Builder.SetInsertPoint(BB);
+
+	// create an alloca for each argument
+	for (aIt = F->arg_begin(); aIt != F->arg_end(); aIt++) {
+		AllocaInst *alloca = Builder.CreateAlloca(Type::getInt32Ty(getGlobalContext()), 0, aIt->getName());
+		Builder.CreateStore(aIt, alloca);
+		LocalVariables[aIt->getName()] = alloca;
+	}
+
 
 	block->codegen();
 

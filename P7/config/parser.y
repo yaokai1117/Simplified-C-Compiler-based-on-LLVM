@@ -57,7 +57,7 @@ void clearAstNodes();
 %type <name> ID
 %type <node> CompUnit FuncDef LVal Exp Decl ConstDecl VarDecl ConstDef Var 
 %type <node> Block BlockItem Stmt Cond
-%type <nodeList> ExpList ConstDefList VarList BlockItemList
+%type <nodeList> ExpList ConstDefList VarList BlockItemList IdList
 
 %destructor {
 	delete ($$);
@@ -346,6 +346,7 @@ ConstDef: ID ASIGN Exp
 			}
 		;
 
+
 VarDecl: INT VarList SEMICOLON 
 	   		{
 				if (!errorFlag) {
@@ -431,10 +432,36 @@ Var: ID
 		}
    ;
 
+
+IdList: ID
+	  	{
+			if (!errorFlag) {
+				$$ = new NodeList(new IdNode($1));
+				$$->setLoc((Loc*)&(@$));
+				astNodes.push_back($$);
+			}
+			else {
+				delete $1;
+			}
+		}
+	  | IdList COMMA ID
+	  	{
+			if (!errorFlag) {
+				$1->append(new IdNode($3));
+				$$ = $1;
+				$$->setLoc((Loc*)&(@$));
+			}
+			else {
+				delete $3;
+			}
+		}
+	  ;
+
+
 FuncDef: VOID ID LPARENT RPARENT Block 	
 	   		{
 				if (!errorFlag) {
-					$$ = new FuncDefNode($2, (BlockNode*)$5);
+					$$ = new FuncDefNode($2, (BlockNode*)$5, NULL);
 					$$->setLoc((Loc*)&(@$));
 					astNodes.push_back($$);
 				}
@@ -442,7 +469,18 @@ FuncDef: VOID ID LPARENT RPARENT Block
 					delete $2;
 				}
 			}
-	   ;
+		| VOID ID LPARENT IdList RPARENT Block
+			{
+				if (!errorFlag) {
+					$$ = new FuncDefNode($2, (BlockNode*)$6, $4);
+					$$->setLoc((Loc*)&(@$));
+					astNodes.push_back($$);
+				}
+				else {
+					delete $2;
+				}
+			}
+		;
 
 Block: LBRACE BlockItemList RBRACE 
 	 	{
@@ -499,7 +537,19 @@ Stmt: LVal ASIGN Exp SEMICOLON
 	| ID LPARENT RPARENT SEMICOLON 
 		{
 			if (!errorFlag) {
-				$$ = new FunCallStmtNode($1);
+				$$ = new FunCallStmtNode($1, NULL);
+				$$->setLoc((Loc*)&(@$));
+				astNodes.push_back($$);
+			}
+			else {
+				delete $1;
+			}
+		}
+
+	| ID LPARENT ExpList RPARENT SEMICOLON
+		{
+			if (!errorFlag) {
+				$$ = new FunCallStmtNode($1, $3);
 				$$->setLoc((Loc*)&(@$));
 				astNodes.push_back($$);
 			}

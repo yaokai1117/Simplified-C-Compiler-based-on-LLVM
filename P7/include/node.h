@@ -296,11 +296,13 @@ public:
 
 class FunCallStmtNode : public StmtNode {
 public:
-	FunCallStmtNode(std::string *name);
+	FunCallStmtNode(std::string *name, NodeList *argv);
 	~FunCallStmtNode();
     int dumpdot(DumpDOT *dumper);
     llvm::Value *codegen();
 
+    bool hasArgs;
+    NodeList *argv;
 	std::string *name;
 };
 
@@ -356,12 +358,14 @@ public:
 
 class FuncDefNode : public Node {
 public:
-	FuncDefNode(std::string *name, BlockNode *block);
+	FuncDefNode(std::string *name, BlockNode *block, NodeList *argv);
 	~FuncDefNode();
     int dumpdot(DumpDOT *dumper);
 	virtual llvm::Function *codegen();
 
+	bool hasArgs;
 	std::string *name;
+	NodeList *argv;
 	BlockNode *block;
 };
 

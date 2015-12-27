@@ -212,7 +212,10 @@ int AssignStmtNode::dumpdot(DumpDOT *dumper)
 
 int FunCallStmtNode::dumpdot(DumpDOT *dumper)
 {
-	int nThis = dumper->newNode(2, name->c_str(), "\\( \\)");
+	int nThis = dumper->newNode(4, name->c_str(), "\\(", " ", "\\)");
+	if (hasArgs) {
+		argv->dumpdot(dumper, nThis, 2);
+	}
 	return nThis;
 }
 
@@ -299,9 +302,12 @@ int WhileStmtNode::dumpdot(DumpDOT *dumper)
 
 int FuncDefNode::dumpdot(DumpDOT *dumper)
 {
-	int nThis = dumper->newNode(4, "void", name->c_str(), "\\( \\)", " ");
+	int nThis = dumper->newNode(6, "void", name->c_str(), "\\(", " ", "\\)", " ");
+	if (hasArgs) {
+		argv->dumpdot(dumper, nThis, 3);
+	}
 	int nBlock = block->dumpdot(dumper);
-	dumper->drawLine(nThis, 3, nBlock);
+	dumper->drawLine(nThis, 5, nBlock);
 	return nThis;
 }
 

@@ -198,10 +198,11 @@ AssignStmtNode::~AssignStmtNode()
 
 
 // implementation of class FunCallStmtNode
-FunCallStmtNode::FunCallStmtNode(std::string *name)
-	: name(name)
+FunCallStmtNode::FunCallStmtNode(std::string *name, NodeList *argv)
+	: name(name), argv(argv)
 {
 	type = FUNCALL_STMT_AST;
+	hasArgs = (argv != NULL);
 }
 
 FunCallStmtNode::~FunCallStmtNode()
@@ -265,10 +266,11 @@ WhileStmtNode::~WhileStmtNode()
 
 
 // implementation of class FuncDefNode
-FuncDefNode::FuncDefNode(std::string *name, BlockNode *block)
-	: name(name), block(block)
+FuncDefNode::FuncDefNode(std::string *name, BlockNode *block, NodeList *argv)
+	: name(name), block(block), argv(argv)
 {
 	type = FUNC_DEF_AST;
+	hasArgs = (argv != NULL);
 }
 
 FuncDefNode::~FuncDefNode()

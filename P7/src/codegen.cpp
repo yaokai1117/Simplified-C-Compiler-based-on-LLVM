@@ -1,7 +1,3 @@
-#include "llvm/Analysis/Passes.h"
-#include "llvm/ExecutionEngine/ExecutionEngine.h"
-#include "llvm/ExecutionEngine/MCJIT.h"
-#include "llvm/ExecutionEngine/SectionMemoryManager.h"
 #include "llvm/IR/DataLayout.h"
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/IRBuilder.h"
@@ -9,8 +5,6 @@
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Verifier.h"
 #include "llvm/PassManager.h"
-#include "llvm/Support/TargetSelect.h"
-#include "llvm/Transforms/Scalar.h"
 #include <cctype>
 #include <cstdio>
 #include <map>
@@ -23,6 +17,7 @@
 using namespace llvm;
 
 extern Module *TheModule;
+extern FunctionPassManager *TheFPM;
 IRBuilder<> Builder(getGlobalContext());
 
 extern MsgFactory msgFactory;
@@ -67,6 +62,12 @@ static Value *lookUp(std::string nameStr, bool &isConst)
 			return 0;
 	}
 	return retV;
+}
+
+
+Value *EmptyNode::codegen()
+{
+	return 0;
 }
 
 
@@ -179,6 +180,7 @@ Value *IdConstDefNode::codegen()
 	if (Builder.GetInsertBlock() == nullptr) {
 		// check if this identifier was already defined
 		if (GloblalVariables.find(*name) != GloblalVariables.end()) {
+			errorFlag = true;
 			msgFactory.newError(e_redefinition_of_identifier, loc->first_line, loc->first_column);
 			return 0;
 		}
@@ -201,10 +203,11 @@ Value *IdConstDefNode::codegen()
 			gVar->setInitializer((ConstantInt*)val);
 		else {
 			// error, try to initialize a global variable with non-constant value
+			// we initialize this variable with a default value (usually 0)
+			// and continue codegen to find more errors
 			gVar->setInitializer(ConstantInt::get(getGlobalContext(), APInt(32, 0, true)));
 			errorFlag = true;
 			msgFactory.newError(e_global_init_not_constant, loc->first_line, loc->first_column);
-			return 0;
 		}
 
 		GloblalVariables[*name] = gVar;
@@ -214,6 +217,7 @@ Value *IdConstDefNode::codegen()
 		// check if this identifier was already defined
 		std::map<std::string, AllocaInst *> &ConstLocalVariables = *ConstLocalTableStack[StackPtr-1];
 		if (ConstLocalVariables.find(*name) != ConstLocalVariables.end()) {
+			errorFlag = true;
 			msgFactory.newError(e_redefinition_of_identifier, loc->first_line, loc->first_column);
 			return 0;
 		}
@@ -253,6 +257,7 @@ Value *ArrayConstDefNode::codegen()
 			arraySize = (int)*((ConstantInt *)sizeV)->getValue().getRawData();
 		}
 		else {
+			errorFlag = true;
 			msgFactory.newError(e_global_init_not_constant, loc->first_line, loc->first_column);
 			return 0;
 		}
@@ -267,6 +272,7 @@ Value *ArrayConstDefNode::codegen()
 	if (Builder.GetInsertBlock() == nullptr) {
 		// check if this identifier was already defined
 		if (GloblalVariables.find(*name) != GloblalVariables.end()) {
+			errorFlag = true;
 			msgFactory.newError(e_redefinition_of_identifier, loc->first_line, loc->first_column);
 			return 0;
 		}
@@ -297,6 +303,7 @@ Value *ArrayConstDefNode::codegen()
 				arrayItems.push_back((Constant *)expV);
 			}
 			else {
+				errorFlag = true;
 				msgFactory.newError(e_global_init_not_constant, loc->first_line, loc->first_column);
 				return 0;
 			}
@@ -311,6 +318,7 @@ Value *ArrayConstDefNode::codegen()
 		// check if this identifier was already defined
 		std::map<std::string, AllocaInst *> &ConstLocalVariables = *ConstLocalTableStack[StackPtr-1];
 		if (ConstLocalVariables.find(*name) != ConstLocalVariables.end()) {
+			errorFlag = true;
 			msgFactory.newError(e_redefinition_of_identifier, loc->first_line, loc->first_column);
 			return 0;
 		}
@@ -352,6 +360,7 @@ Value *IdVarDefNode::codegen()
 	if (Builder.GetInsertBlock() == nullptr) {
 		// check if this identifier was already defined
 		if (GloblalVariables.find(*name) != GloblalVariables.end()) {
+			errorFlag = true;
 			msgFactory.newError(e_redefinition_of_identifier, loc->first_line, loc->first_column);
 			return 0;
 		}
@@ -377,7 +386,6 @@ Value *IdVarDefNode::codegen()
 				gVar->setInitializer(ConstantInt::get(getGlobalContext(), APInt(32, 0, true)));
 				errorFlag = true;
 				msgFactory.newError(e_global_init_not_constant, loc->first_line, loc->first_column);
-				return 0;
 			}
 		}
 		else {
@@ -391,6 +399,7 @@ Value *IdVarDefNode::codegen()
 		// check if this identifier was already defined
 		std::map<std::string, AllocaInst *> &LocalVariables = *LocalTableStack[StackPtr-1];
 		if (LocalVariables.find(*name) != LocalVariables.end()) {
+			errorFlag = true;
 			msgFactory.newError(e_redefinition_of_identifier, loc->first_line, loc->first_column);
 			return 0;
 		}
@@ -431,6 +440,7 @@ Value *ArrayVarDefNode::codegen()
 			arraySize = (int)*((ConstantInt *)sizeV)->getValue().getRawData();
 		}
 		else {
+			errorFlag = true;
 			msgFactory.newError(e_global_init_not_constant, loc->first_line, loc->first_column);
 			return 0;
 		}
@@ -445,6 +455,7 @@ Value *ArrayVarDefNode::codegen()
 	if (Builder.GetInsertBlock() == nullptr) {
 		// check if this identifier was already defined
 		if (GloblalVariables.find(*name) != GloblalVariables.end()) {
+			errorFlag = true;
 			msgFactory.newError(e_redefinition_of_identifier, loc->first_line, loc->first_column);
 			return 0;
 		}
@@ -478,6 +489,7 @@ Value *ArrayVarDefNode::codegen()
 					arrayItems.push_back((Constant *)expV);
 				}
 				else {
+					errorFlag = true;
 					msgFactory.newError(e_global_init_not_constant, loc->first_line, loc->first_column);
 					return 0;
 				}
@@ -498,6 +510,7 @@ Value *ArrayVarDefNode::codegen()
 		// check if this identifier was already defined
 		std::map<std::string, AllocaInst *> &LocalVariables = *LocalTableStack[StackPtr-1];
 		if (LocalVariables.find(*name) != LocalVariables.end()) {
+			errorFlag = true;
 			msgFactory.newError(e_redefinition_of_identifier, loc->first_line, loc->first_column);
 			return 0;
 		}
@@ -655,8 +668,64 @@ Value *BlockStmtNode::codegen()
 
 Value *CondNode::codegen()
 {
-	Value *rValue = rhs->codegen();
-	Value *lValue = lhs->codegen();
+	Value *lValue, *rValue;
+	PHINode *pn;
+	Function *theFunction;
+	BasicBlock *beginBB, *shortBB, *longBB;
+
+	switch (op) {
+	case OR_OP:
+	case AND_OP:
+		theFunction = Builder.GetInsertBlock()->getParent();
+		beginBB = BasicBlock::Create(getGlobalContext(), "begin_cond", theFunction);
+		longBB = BasicBlock::Create(getGlobalContext(), "long_path");
+		shortBB = BasicBlock::Create(getGlobalContext(), "short_path");
+
+		Builder.CreateBr(beginBB);
+		// begin block
+		Builder.SetInsertPoint(beginBB);
+		lValue = lhs->codegen();
+		if (lValue == 0)
+			return 0;
+		if (op == OR_OP)
+			Builder.CreateCondBr(lValue, shortBB, longBB);
+		else
+			Builder.CreateCondBr(lValue, longBB, shortBB);
+		beginBB = Builder.GetInsertBlock();
+
+		// long block (no shortcut)
+		theFunction->getBasicBlockList().push_back(longBB);
+		Builder.SetInsertPoint(longBB);
+		rValue = rhs->codegen();
+		if (rValue == 0)
+			return 0;
+		if (op == OR_OP)
+			rValue = Builder.CreateOr(lValue, rValue, "or_tmp");
+		else
+			rValue = Builder.CreateAnd(lValue, rValue, "and_tmp");
+		Builder.CreateBr(shortBB);
+		longBB = Builder.GetInsertBlock();
+
+		// short block (shortcut)
+		theFunction->getBasicBlockList().push_back(shortBB);
+		Builder.SetInsertPoint(shortBB);
+		pn = Builder.CreatePHI(Type::getInt1Ty(getGlobalContext()), 2, "cond_tmp");
+		pn->addIncoming(lValue, beginBB);
+		pn->addIncoming(rValue, longBB);
+		return pn;
+
+	case NOT_OP:
+		rValue = rhs->codegen();
+		if (rValue == 0)
+			return 0;
+		return Builder.CreateNot(rValue);
+
+	default:
+		break;
+	}
+
+	rValue = rhs->codegen();
+	lValue = lhs->codegen();
 	if (rValue == 0 || lValue == 0)
 		return 0;
 	switch (op) {
@@ -757,6 +826,7 @@ Value *WhileStmtNode::codegen()
 	theFunction->getBasicBlockList().push_back(endBB);
 	Builder.SetInsertPoint(endBB);
 
+
 	// exit current scope
 	StackPtr--;
 	delete LocalTableStack[StackPtr];
@@ -766,15 +836,20 @@ Value *WhileStmtNode::codegen()
 }
 
 
-Function *FuncDefNode::codegen()
+// ATTENTION BUG EXISTS !!!!!
+Value *BreakStmtNode::codegen()
 {
-	// enter new scope
-	LocalTableStack[StackPtr] = new std::map<std::string, AllocaInst *>;
-	ConstLocalTableStack[StackPtr] = new std::map<std::string, AllocaInst *>;
-	StackPtr++;
+	return 0;
+}
 
-	std::map<std::string, AllocaInst *> &LocalVariables = *LocalTableStack[StackPtr-1];
+// ATTENTION BUG EXISTS !!!!!
+Value *ContinueStmtNode::codegen()
+{
+	return 0;
+}
 
+Function *FuncDeclNode::codegen()
+{
 	std::list<Node *> argNames;
 	if (hasArgs)
 		argNames = argv->nodes;
@@ -785,13 +860,23 @@ Function *FuncDefNode::codegen()
 	Function *F =
 	      Function::Create(FT, Function::ExternalLinkage, name->c_str(), TheModule);
 
-
-	// sf F conflicted, there was already something named 'Name'.
+	// if F conflicted, there was already something named 'Name'.
 	if (F->getName() != *name) {
 		F->eraseFromParent();
-		errorFlag = true;
-		msgFactory.newError(e_redefinition_of_function, loc->first_line, loc->first_column);
-		return 0;
+		F = TheModule->getFunction(*name);
+
+		// if F already has a body, emit function redefinition error
+		if (!F->empty()) {
+			errorFlag = true;
+			msgFactory.newError(e_redefinition_of_function, loc->first_line, loc->first_column);
+			return 0;
+		}
+	    // if F took a different number of args, emit argument missmatch error
+	    if (F->arg_size() != argNames.size()) {
+	    	errorFlag = true;
+			msgFactory.newError(e_argument_unmatch, loc->first_line, loc->first_column);
+			return 0;
+	    }
 	}
 
 	// set names for all arguments
@@ -802,12 +887,29 @@ Function *FuncDefNode::codegen()
 		aIt->setName(*(arg->name));
 	}
 
+	return F;
+}
+
+
+Function *FuncDefNode::codegen()
+{
+	// enter new scope
+	LocalTableStack[StackPtr] = new std::map<std::string, AllocaInst *>;
+	ConstLocalTableStack[StackPtr] = new std::map<std::string, AllocaInst *>;
+	StackPtr++;
+
+	Function *F = decl->codegen();
+	if (F == 0)
+		return 0;
+
+	std::map<std::string, AllocaInst *> &LocalVariables = *LocalTableStack[StackPtr-1];
+
 	// insert entry block
 	BasicBlock *BB = BasicBlock::Create(getGlobalContext(), "entry", F);
 	Builder.SetInsertPoint(BB);
 
 	// create an alloca for each argument
-	for (aIt = F->arg_begin(); aIt != F->arg_end(); aIt++) {
+	for (Function::arg_iterator aIt = F->arg_begin(); aIt != F->arg_end(); aIt++) {
 		AllocaInst *alloca = Builder.CreateAlloca(Type::getInt32Ty(getGlobalContext()), 0, aIt->getName());
 		Builder.CreateStore(aIt, alloca);
 		LocalVariables[aIt->getName()] = alloca;
@@ -819,7 +921,11 @@ Function *FuncDefNode::codegen()
 
     Builder.CreateRetVoid();
 
+    // validate the generated code, checking for consistency
 	verifyFunction(*F);
+
+	// optimize the function
+	TheFPM->run(*F);
 
 	// exit current scope
 	StackPtr--;
@@ -834,20 +940,6 @@ Function *FuncDefNode::codegen()
 
 Value *CompUnitNode::codegen()
 {
-
-	// debug
-    GlobalVariable *Output =
-    		new GlobalVariable(*TheModule, IntegerType::get(getGlobalContext(), 32),
-    				false, GlobalVariable::ExternalLinkage, 0, "Output");
-    GloblalVariables["Output"] = Output;
-
-    std::vector<Type *> func_print_args;
-    FunctionType *func_print_type =
-    		FunctionType::get(Type::getVoidTy(getGlobalContext()), func_print_args, TheModule);
-    Function *func_print =
-    		Function::Create(func_print_type, GlobalVariable::ExternalLinkage, "print", TheModule);
-	// end debug
-
 	for (std::list<Node*>::iterator it = nodes.begin(); it != nodes.end(); it++) {
 			(*it)->codegen();
 	}

@@ -1,27 +1,25 @@
-/*
- * This program has 4 errors and 1 warning
- **/
+
+extern void print(int c);
+extern void print_space();
+extern void print_newline();
+
+const int a = 0;
+
+void add(int a, int b)
+{
+	print(a + b);
+}
+
 void main()
 {
-	int e[] = {3, 4};
+	a = 1;
 
-	a = (b + c; 
+	int b = 1;
 
-	c = (a b + /* a long block comment,
-				location of the error after the comment is correct */ d;
+	int b = 1;
 
-	if (a == 1) 
-		if (b == 1)
-			c = 1;
-		else {
-		b = 4;
-		}
+	sub(a, b);
 
-	const a = 3, b[20] = {3, 4};
-
-	while (1 == 3) {
-		b = 4 a;
-	}
-
-	hello();
+	add(a);
+	
 }

@@ -230,37 +230,55 @@ int CondNode::dumpdot(DumpDOT *dumper)
 {
 	char op_str[4] = "   ";	
 	switch (op) {
-		case LT_OP:
-			op_str[0] = '\\';
-			op_str[1] = '<';
-			break;
-		case LTE_OP:
-			op_str[0] = '\\';
-			op_str[1] = '<';
-			op_str[2] = '=';
-			break;
-		case GT_OP:
-			op_str[0] = '\\';
-			op_str[1] = '>';
-			break;
-		case GTE_OP:
-			op_str[0] = '\\';
-			op_str[1] = '>';
-			op_str[2] = '=';
-			break;
-		case EQ_OP:
-			op_str[1] = '=';
-			op_str[2] = '=';
-			break;
-		case NEQ_OP:
-			op_str[1] = '!';
-			op_str[2] = '=';
-			break;
+	case AND_OP:
+		op_str[0] = 'a';
+		op_str[1] = 'n';
+		op_str[2] = 'd';
+		break;
+	case OR_OP:
+		op_str[0] = 'o';
+		op_str[1] = 'r';
+		break;
+	case NOT_OP:
+		op_str[0] = 'n';
+		op_str[1] = 'o';
+		op_str[2] = 't';
+		break;
+	case LT_OP:
+		op_str[0] = '\\';
+		op_str[1] = '<';
+		break;
+	case LTE_OP:
+		op_str[0] = '\\';
+		op_str[1] = '<';
+		op_str[2] = '=';
+		break;
+	case GT_OP:
+		op_str[0] = '\\';
+		op_str[1] = '>';
+		break;
+	case GTE_OP:
+		op_str[0] = '\\';
+		op_str[1] = '>';
+		op_str[2] = '=';
+		break;
+	case EQ_OP:
+		op_str[1] = '=';
+		op_str[2] = '=';
+		break;
+	case NEQ_OP:
+		op_str[1] = '!';
+		op_str[2] = '=';
+		break;
+	default:
+		break;
 	}
 	int nThis = dumper->newNode(3, " ", op_str, " ");
-	int nLhs = lhs->dumpdot(dumper);
+	if (op != NOT_OP) {
+		int nLhs = lhs->dumpdot(dumper);
+		dumper->drawLine(nThis, 0, nLhs);
+	}
 	int nRhs = rhs->dumpdot(dumper);
-	dumper->drawLine(nThis, 0, nLhs);
 	dumper->drawLine(nThis, 2, nRhs);
 	return nThis;
 }
@@ -300,14 +318,45 @@ int WhileStmtNode::dumpdot(DumpDOT *dumper)
 }
 
 
-int FuncDefNode::dumpdot(DumpDOT *dumper)
+int BreakStmtNode::dumpdot(DumpDOT *dumper)
 {
-	int nThis = dumper->newNode(6, "void", name->c_str(), "\\(", " ", "\\)", " ");
+	int nThis = dumper->newNode(1, "break");
+	return nThis;
+}
+
+
+int ContinueStmtNode::dumpdot(DumpDOT *dumper)
+{
+	int nThis = dumper->newNode(1, "continue");
+	return nThis;
+}
+
+
+int EmptyNode::dumpdot(DumpDOT *dumper)
+{
+	int nThis = dumper->newNode(1, "empty");
+	return nThis;
+}
+
+
+
+int FuncDeclNode::dumpdot(DumpDOT *dumper)
+{
+	int nThis = dumper->newNode(5, "void", name->c_str(), "\\(", " ", "\\)");
 	if (hasArgs) {
 		argv->dumpdot(dumper, nThis, 3);
 	}
+	return nThis;
+}
+
+
+int FuncDefNode::dumpdot(DumpDOT *dumper)
+{
+	int nThis = dumper->newNode(2, "definition", "body");
+	int nDecl = decl->dumpdot(dumper);
 	int nBlock = block->dumpdot(dumper);
-	dumper->drawLine(nThis, 5, nBlock);
+	dumper->drawLine(nThis, 0, nDecl);
+	dumper->drawLine(nThis, 1, nBlock);
 	return nThis;
 }
 

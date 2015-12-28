@@ -16,6 +16,7 @@ Node::~Node()
 	delete loc;
 }
 
+
 void Node::setLoc(Loc *loc)
 {
 	this->loc->first_line 	= loc->first_line;
@@ -226,7 +227,7 @@ BlockStmtNode::~BlockStmtNode()
 
 
 // implementation of class CondNode
-CondNode::CondNode(OpType op, ExpNode *lhs, ExpNode *rhs)
+CondNode::CondNode(OpType op, Node *lhs, Node *rhs)
 	: op(op), lhs(lhs), rhs(rhs)
 {
 	type = COND_AST;
@@ -236,6 +237,15 @@ CondNode::~CondNode()
 {
 }
 
+
+// implementation of class EmptyNode
+EmptyNode::EmptyNode()
+{
+}
+
+EmptyNode::~EmptyNode()
+{
+}
 
 
 // implementation of class IfStmtNode
@@ -263,19 +273,48 @@ WhileStmtNode::~WhileStmtNode()
 {
 }
 
+// implementation of class BreakStmtNode
+BreakStmtNode::BreakStmtNode()
+{
+}
+BreakStmtNode::~BreakStmtNode()
+{
+}
+
+// implementation of class ContinueStmtNode
+ContinueStmtNode::ContinueStmtNode()
+{
+}
+
+ContinueStmtNode::~ContinueStmtNode()
+{
+}
+
+
+// implemantatian of class FuncDeclNode
+FuncDeclNode::FuncDeclNode(string *name, NodeList *argv)
+	: name(name), argv(argv)
+{
+	type = FUNC_DECL_AST;
+	hasArgs = (argv != NULL);
+}
+
+FuncDeclNode::~FuncDeclNode()
+{
+	delete name;
+}
+
 
 
 // implementation of class FuncDefNode
-FuncDefNode::FuncDefNode(std::string *name, BlockNode *block, NodeList *argv)
-	: name(name), block(block), argv(argv)
+FuncDefNode::FuncDefNode(FuncDeclNode *decl, BlockNode *block)
+	: decl(decl), block(block)
 {
 	type = FUNC_DEF_AST;
-	hasArgs = (argv != NULL);
 }
 
 FuncDefNode::~FuncDefNode()
 {
-	delete name;
 }
 
 

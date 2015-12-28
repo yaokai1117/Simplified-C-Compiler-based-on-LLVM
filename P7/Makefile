@@ -8,7 +8,7 @@ LLVM_LINK_FLAG=`llvm-config --ldflags --system-libs --libs core mcjit native`
 
 LLVM_CXX_FLAG=`llvm-config --cxxflags|sed 's/-fno-rtti//'` 
 
-all: bin/compiler
+all: bin/compiler bin/libexternfunc.so
 
 bin/compiler: bin/lexer.o bin/parser.o bin/main.o bin/util.o bin/global.o bin/msgfactory.o bin/dumpdot.o bin/node.o bin/codegen.o
 	@mkdir -p bin
@@ -57,11 +57,17 @@ src/lexer.cpp: config/lexer.l config/parser.y
 src/parser.cpp include/tok.h: config/parser.y
 	$(YACC) $(YFLAGS) -v --defines=include/tok.h -o src/parser.cpp $<
 
+bin/libexternfunc.so: src/libexternfunc.c
+	clang -shared -fPIC -o bin/libexternfunc.so src/libexternfunc.c
+
 
 
 .PHONY: clean
 clean:
-	rm -f bin/*.o  bin/compiler
+	rm -f bin/*.o bin/*.so  bin/compiler
 	rm -f src/lexer.cpp src/parser.cpp src/parser.output include/tok.h
 	rm -f *.png *.dot
+	rm *.ll 
+	rm test1 test2 test3 test4 quicksort 
+	
 

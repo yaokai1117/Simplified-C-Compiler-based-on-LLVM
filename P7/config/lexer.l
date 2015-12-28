@@ -21,7 +21,7 @@ delim 		[ \t]
 blockcomment 	\/\*([^\*]|((\*)*[^/\*]))*(\*)+\/ 
 linecomment  	\/\/.*\n
 ws 			{delim}+
-letter 		[A-Za-z]
+letter 		[A-Za-z_]
 digit 		[0-9]
 id 			{letter}({letter}|{digit})*
 num 		{digit}+
@@ -52,7 +52,10 @@ int 		{return INT;}
 if 			{return IF;}
 else 		{return ELSE;}
 while  		{return WHILE;}
+break 		{return BREAK;}
+continue 	{return CONTINUE;}
 void 		{return VOID;}
+extern 		{return EXTERN;}
 {id} 		{
 				yylval.name = new std::string(yytext);
 				return ID;
@@ -87,6 +90,9 @@ void 		{return VOID;}
 ">=" 		{return GTE;}
 "!=" 		{return NEQ;}
 "==" 		{return EQ;}
+"!" 		{return NOT;}
+"&&" 		{return AND;}
+"||" 		{return OR;}
 
 \n 			{yycolumn = 1;}
 

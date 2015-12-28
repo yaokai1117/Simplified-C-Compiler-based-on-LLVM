@@ -36,7 +36,7 @@ void clearAstNodes();
 }
 
 
-%token CONST INT IF ELSE WHILE VOID ID NUM
+%token CONST INT EXTERN IF ELSE WHILE VOID ID NUM BREAK CONTINUE
 %token ASIGN LBRACE RBRACE LBRACKET RBRACKET LPARENT RPARENT COMMA SEMICOLON ERR_RPARENT 
 
 %precedence NO_ELSE
@@ -46,6 +46,9 @@ void clearAstNodes();
 %precedence RPARENT LPARENT ERR_RPARENT
 
 %left error  /*not good, but useful here*/
+%left OR
+%left AND
+%left NOT
 %left EQ NEQ
 %left LT GT LTE GTE
 %left PLUS MINUS
@@ -55,9 +58,9 @@ void clearAstNodes();
 
 %type <num> NUM
 %type <name> ID
-%type <node> CompUnit FuncDef LVal Exp Decl ConstDecl VarDecl ConstDef Var 
+%type <node> CompUnit ExternDecl FuncDecl FuncDef LVal Exp Decl ConstDecl VarDecl ConstDef Var 
 %type <node> Block BlockItem Stmt Cond
-%type <nodeList> ExpList ConstDefList VarList BlockItemList IdList
+%type <nodeList> ExpList ConstDefList VarList BlockItemList ArgNameList
 
 %destructor {
 	delete ($$);
@@ -81,6 +84,22 @@ CompUnit: Decl
 					astNodes.push_back(root);
 				}
 			}
+		| ExternDecl
+			{
+				if (!errorFlag) {
+					root = new CompUnitNode($1);
+					root->setLoc((Loc*)&(@$));
+					astNodes.push_back(root);
+				}
+			}
+		| FuncDecl		 			
+			{
+				if (!errorFlag) {
+					root = new CompUnitNode($1);
+					root->setLoc((Loc*)&(@$));
+					astNodes.push_back(root);
+				}
+			}
 		| CompUnit Decl 	
 			{
 				if (!errorFlag) {
@@ -89,6 +108,20 @@ CompUnit: Decl
 				}
 			}
 		| CompUnit FuncDef 	
+			{
+				if (!errorFlag) {
+					root->append($2);
+					root->setLoc((Loc*)&(@$));
+				}
+			}
+		| CompUnit FuncDecl 	
+			{
+				if (!errorFlag) {
+					root->append($2);
+					root->setLoc((Loc*)&(@$));
+				}
+			}
+		| CompUnit ExternDecl 	
 			{
 				if (!errorFlag) {
 					root->append($2);
@@ -433,35 +466,35 @@ Var: ID
    ;
 
 
-IdList: ID
+ArgNameList: INT ID
 	  	{
 			if (!errorFlag) {
-				$$ = new NodeList(new IdNode($1));
+				$$ = new NodeList(new IdNode($2));
 				$$->setLoc((Loc*)&(@$));
 				astNodes.push_back($$);
 			}
 			else {
-				delete $1;
+				delete $2;
 			}
 		}
-	  | IdList COMMA ID
+	  | ArgNameList COMMA INT ID
 	  	{
 			if (!errorFlag) {
-				$1->append(new IdNode($3));
+				$1->append(new IdNode($4));
 				$$ = $1;
 				$$->setLoc((Loc*)&(@$));
 			}
 			else {
-				delete $3;
+				delete $4;
 			}
 		}
 	  ;
 
 
-FuncDef: VOID ID LPARENT RPARENT Block 	
-	   		{
+FuncDecl: VOID ID LPARENT RPARENT SEMICOLON
+			{
 				if (!errorFlag) {
-					$$ = new FuncDefNode($2, (BlockNode*)$5, NULL);
+					$$ = new FuncDeclNode($2, NULL);
 					$$->setLoc((Loc*)&(@$));
 					astNodes.push_back($$);
 				}
@@ -469,10 +502,49 @@ FuncDef: VOID ID LPARENT RPARENT Block
 					delete $2;
 				}
 			}
-		| VOID ID LPARENT IdList RPARENT Block
+		| VOID ID LPARENT ArgNameList RPARENT SEMICOLON
 			{
 				if (!errorFlag) {
-					$$ = new FuncDefNode($2, (BlockNode*)$6, $4);
+					$$ = new FuncDeclNode($2, (NodeList*)$4);
+					$$->setLoc((Loc*)&(@$));
+					astNodes.push_back($$);
+				}
+				else {
+					delete $2;
+				}
+			}
+		;
+
+
+ExternDecl: EXTERN FuncDecl
+	   		{
+				if (!errorFlag) {
+					$$ = $2;
+					$$->setLoc((Loc*)&(@$));
+				}
+			}
+	   ;
+
+
+FuncDef: VOID ID LPARENT RPARENT Block 	
+	   		{
+				if (!errorFlag) {
+					FuncDeclNode *decl = new FuncDeclNode($2, NULL);
+					decl->setLoc((Loc*)&(@$));
+					$$ = new FuncDefNode(decl, (BlockNode*)$5);
+					$$->setLoc((Loc*)&(@$));
+					astNodes.push_back($$);
+				}
+				else {
+					delete $2;
+				}
+			}
+		| VOID ID LPARENT ArgNameList RPARENT Block
+			{
+				if (!errorFlag) {
+					FuncDeclNode *decl = new FuncDeclNode($2, (NodeList*)$4);
+					decl->setLoc((Loc*)&(@$));
+					$$ = new FuncDefNode(decl, (BlockNode*)$6);
 					$$->setLoc((Loc*)&(@$));
 					astNodes.push_back($$);
 				}
@@ -594,55 +666,118 @@ Stmt: LVal ASIGN Exp SEMICOLON
 			}
 		}
 
+	| BREAK SEMICOLON
+		{
+			if (!errorFlag) {
+				$$ = new BreakStmtNode();
+				$$->setLoc((Loc*)&(@$));
+				astNodes.push_back($$);
+			}
+		}
+
+	| CONTINUE SEMICOLON
+		{
+			if (!errorFlag) {
+				$$ = new ContinueStmtNode();
+				$$->setLoc((Loc*)&(@$));
+				astNodes.push_back($$);
+			}
+		}
+
 	| SEMICOLON 		
 		{
+			if (!errorFlag) {
+				$$ = new EmptyNode();
+				$$->setLoc((Loc*)&(@$));
+				astNodes.push_back($$);
+			}
 		}
 	;
 
-Cond: Exp LT Exp 		
+Cond: LPARENT Cond RPARENT
 		{
 			if (!errorFlag) {
-				$$ = new CondNode(LT_OP, (ExpNode*)$1, (ExpNode*)$3);
+				$$ = $2;
+				$$->setLoc((Loc*)&(@$));
+			}
+		}
+
+	| Cond OR Cond
+		{
+			if (!errorFlag) {
+				$$ = new CondNode(OR_OP, $1, $3);
 				$$->setLoc((Loc*)&(@$));
 				astNodes.push_back($$);
 			}
 		}
+
+	| Cond AND Cond
+		{
+			if (!errorFlag) {
+				$$ = new CondNode(AND_OP, $1, $3);
+				$$->setLoc((Loc*)&(@$));
+				astNodes.push_back($$);
+			}
+		}
+
+	| NOT Cond 
+		{
+			if (!errorFlag) {
+				$$ = new CondNode(NOT_OP, NULL, $2);
+				$$->setLoc((Loc*)&(@$));
+				astNodes.push_back($$);
+			}
+		}
+
+	| Exp LT Exp 		
+		{
+			if (!errorFlag) {
+				$$ = new CondNode(LT_OP, $1, $3);
+				$$->setLoc((Loc*)&(@$));
+				astNodes.push_back($$);
+			}
+		}
+
 	| Exp GT Exp 		
 		{
 			if (!errorFlag) {
-				$$ = new CondNode(GT_OP, (ExpNode*)$1, (ExpNode*)$3);
+				$$ = new CondNode(GT_OP, $1, $3);
 				$$->setLoc((Loc*)&(@$));
 				astNodes.push_back($$);
 			}
 		}
+
 	| Exp LTE Exp 		
 		{
 			if (!errorFlag) {
-				$$ = new CondNode(LTE_OP, (ExpNode*)$1, (ExpNode*)$3);
+				$$ = new CondNode(LTE_OP, $1, $3);
 				$$->setLoc((Loc*)&(@$));
 				astNodes.push_back($$);
 			}
 		}
+
 	| Exp GTE Exp 		
 		{
 			if (!errorFlag) {
-				$$ = new CondNode(GTE_OP, (ExpNode*)$1, (ExpNode*)$3);
+				$$ = new CondNode(GTE_OP, $1, $3);
 				$$->setLoc((Loc*)&(@$));
 				astNodes.push_back($$);
 			}
 		}
+
 	| Exp EQ Exp 		
 		{
 			if (!errorFlag) {
-				$$ = new CondNode(EQ_OP, (ExpNode*)$1, (ExpNode*)$3);
+				$$ = new CondNode(EQ_OP, $1, $3);
 				$$->setLoc((Loc*)&(@$));
 				astNodes.push_back($$);
 			}
 		}
+
 	| Exp NEQ Exp 		
 		{
 			if (!errorFlag) {
-				$$ = new CondNode(NEQ_OP, (ExpNode*)$1, (ExpNode*)$3);
+				$$ = new CondNode(NEQ_OP, $1, $3);
 				$$->setLoc((Loc*)&(@$));
 				astNodes.push_back($$);
 			}

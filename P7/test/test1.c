@@ -1,23 +1,25 @@
 
+extern void print(int c);
+extern void print_space();
+extern void print_newline();
+
 void main()
 {
-	int e[] = {3, 4};
+	int a = 1;
+	int b = 2;
 
-	if (a == 1) 
-		if (b == 1)
-			c[0] = 1;
-		else {
-			b[1+2] = 4; // some line comments
-		}
-	
-	const int a = 3, /*some 
-					   block 
-					   comments */b[20] = {3};
+	if (a < b)
+		print(a);
+	else
+		print(b);
+	print_newline();
 
-	while (1 == 3) {
-		b = 4;
+	int i = 0;
+	while (i < 8) {
+		print(i);
+		print_space();
+		i = i + 1;
 	}
-
-	hello();
+	print_newline();
 }
 

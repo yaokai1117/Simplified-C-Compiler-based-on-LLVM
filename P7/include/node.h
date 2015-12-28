@@ -40,6 +40,7 @@ typedef enum {
 	IF_STMT_AST,
 	WHILE_STMT_AST,
 
+	FUNC_DECL_AST,
 	FUNC_DEF_AST,
 
 	COND_AST
@@ -52,7 +53,10 @@ typedef enum {
 	LTE_OP,
 	GTE_OP,
 	EQ_OP,
-	NEQ_OP
+	NEQ_OP,
+	AND_OP,
+	OR_OP,
+	NOT_OP
 }OpType;
 
 typedef struct {
@@ -249,6 +253,16 @@ public:
 };
 
 
+
+class EmptyNode : public StmtNode {
+public:
+	EmptyNode();
+	~EmptyNode();
+	virtual int dumpdot(DumpDOT *dumper);
+	virtual llvm::Value *codegen();
+};
+
+
 class BlockNode : public Node {
 public:
 	BlockNode(NodeList *blockItems);
@@ -320,14 +334,14 @@ public:
 
 class CondNode : public Node {
 public:
-	CondNode(OpType op, ExpNode *lhs, ExpNode *rhs);
+	CondNode(OpType op, Node *lhs, Node *rhs);
 	~CondNode();
     int dumpdot(DumpDOT *dumper);
 	virtual llvm::Value *codegen();
 
 	OpType op;
-	ExpNode *lhs;
-	ExpNode *rhs;
+	Node *lhs;
+	Node *rhs;
 };
 
 
@@ -356,16 +370,46 @@ public:
 	StmtNode *do_stmt;
 };
 
-class FuncDefNode : public Node {
+
+class BreakStmtNode : public StmtNode {
 public:
-	FuncDefNode(std::string *name, BlockNode *block, NodeList *argv);
-	~FuncDefNode();
-    int dumpdot(DumpDOT *dumper);
+	BreakStmtNode();
+	~BreakStmtNode();
+	int dumpdot(DumpDOT *dumper);
+	virtual llvm::Value *codegen();
+};
+
+
+class ContinueStmtNode : public StmtNode {
+public:
+	ContinueStmtNode();
+	~ContinueStmtNode();
+	int dumpdot(DumpDOT *dumper);
+	virtual llvm::Value *codegen();
+};
+
+
+class FuncDeclNode : public Node {
+public:
+	FuncDeclNode(std::string *name, NodeList *argv);
+	~FuncDeclNode();
+	int dumpdot(DumpDOT *dumper);
 	virtual llvm::Function *codegen();
 
 	bool hasArgs;
 	std::string *name;
 	NodeList *argv;
+};
+
+
+class FuncDefNode : public Node {
+public:
+	FuncDefNode(FuncDeclNode *decl, BlockNode *block);
+	~FuncDefNode();
+    int dumpdot(DumpDOT *dumper);
+	virtual llvm::Function *codegen();
+
+	FuncDeclNode *decl;
 	BlockNode *block;
 };
 

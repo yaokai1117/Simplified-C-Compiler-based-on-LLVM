@@ -1,43 +1,35 @@
-int a[10];
 
-// sort function
-void sort()
-{
-	int i, j, key;
-	i = 1;
-	while (i < 10) {
-		key = a[i];
-		j = i - 1;
-		flag = 1;
-		while (j >= 0) {
-			if (a[j] <= key)
-				flag = 0;
-			if (flag > 0) {
-				a[j+1] = a[j];
-			}
-			j = j - 1;
-		}
-		a[j+1] = key;
-		i = i + 1;
-	}
-}
+extern void print(int c);
+extern void print_space();
+extern void print_newline();
+
+const int size = 5;
+
+int a[size + 3] = {2, 0, 1, 5, 1, 2, 2, 8};
 
 void main()
 {
-	int i;
-	i = 0;
 
-	while (i < 10) {
-		a[i] = 9 - i;
+	int i = 0;
+	while (i < 8) {
+		print(a[i]);
 		i = i + 1;
 	}
 
-	sort();
+	print_newline();
+
+	int b[size];
+	b[0] = 0;
+	b[1] = 1;
+	b[2] = 2;
+	b[3] = 3;
+	b[4] = 4;
 
 	i = 0;
-	while (i < 10) {
-		Output = a[i];
-		print();
+	while (i < size) {
+		print(b[i]);
 		i = i + 1;
 	}
+	print_newline();
 }
+

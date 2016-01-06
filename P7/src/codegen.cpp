@@ -925,7 +925,7 @@ Function *FuncDefNode::codegen()
 	verifyFunction(*F);
 
 	// optimize the function
-	TheFPM->run(*F);
+	//TheFPM->run(*F);
 
 	// exit current scope
 	StackPtr--;

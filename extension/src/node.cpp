@@ -3,6 +3,7 @@
 #include <string>
 #include <list>
 #include "node.h"
+#include "visitor.h"
 
 
 // implementation of class Node
@@ -41,6 +42,15 @@ void NodeList::append(Node *node)
 	nodes.push_back(node);
 }
 
+void NodeList::accept(Visitor &v)
+{
+	for (std::list<Node *>::iterator it = nodes.begin();
+			it != nodes.end(); it++) {
+		(*it)->accept(v);
+	}
+	v.visitNodeList(this);
+}
+
 
 
 // implementation of class NumNode
@@ -48,13 +58,16 @@ NumNode::NumNode(int val)
 	: val(val)
 {
 	type = NUM_AST;
-	valTy = INT_TYPE;
 }
 
 NumNode::~NumNode()
 {
 }
 
+void NumNode::accept(Visitor &v)
+{
+	v.visitNumNode(this);
+}
 
 
 // implementation of class FNumNode
@@ -62,11 +75,15 @@ FNumNode::FNumNode(double fval)
 	: fval(fval)
 {
 	type = FNUM_AST;
-	valTy = FLOAT_TYPE;
 }
 
 FNumNode::~FNumNode()
 {
+}
+
+void FNumNode::accept(Visitor &v)
+{
+	v.visitFNumNode(this);
 }
 
 
@@ -75,11 +92,15 @@ CharNode::CharNode(char cval)
 	: cval(cval)
 {
 	type = CHAR_AST;
-	valTy = CHAR_TYPE;
 }
 
 CharNode::~CharNode()
 {
+}
+
+void CharNode::accept(Visitor &v)
+{
+	v.visitCharNode(this);
 }
 
 
@@ -94,6 +115,13 @@ BinaryExpNode::~BinaryExpNode()
 {
 }
 
+void BinaryExpNode::accept(Visitor &v)
+{
+	lhs->accept(v);
+	rhs->accept(v);
+	v.visitBinaryExpNode(this);
+}
+
 
 // implementation of class BinaryExpNode
 UnaryExpNode::UnaryExpNode(char op, ExpNode *operand)
@@ -106,6 +134,11 @@ UnaryExpNode::~UnaryExpNode()
 {
 }
 
+void UnaryExpNode::accept(Visitor &v)
+{
+	operand->accept(v);
+	v.visitUnaryExpNode(this);
+}
 
 
 // implementation of class IdNode
@@ -120,6 +153,10 @@ IdNode::~IdNode()
 	delete name;
 }
 
+void IdNode::accept(Visitor &v)
+{
+	v.visitIdNode(this);
+}
 
 
 // implementation of class ArrayItemNode
@@ -132,6 +169,12 @@ ArrayItemNode::ArrayItemNode(std::string *name, ExpNode *index)
 ArrayItemNode::~ArrayItemNode()
 {
 	delete name;
+}
+
+void ArrayItemNode::accept(Visitor &v)
+{
+	index->accept(v);
+	v.visitArrayItemNdoe(this);
 }
 
 
@@ -150,6 +193,13 @@ IdVarDefNode::~IdVarDefNode()
 	delete name;
 }
 
+void IdVarDefNode::accept(Visitor &v)
+{
+	if (isAssigned) {
+		value->accept(v);
+	}
+	v.visitIdVarDefNode(this);
+}
 
 
 // implementation of class ArrayVarDefNode
@@ -168,6 +218,18 @@ ArrayVarDefNode::~ArrayVarDefNode()
 	delete name;
 }
 
+void ArrayVarDefNode::accept(Visitor &v)
+{
+	if (hasSize) {
+		size->accept(v);
+	}
+
+	if (isAssigned) {
+		values->accept(v);
+	}
+
+	v.visitArrayVarDefNode(this);
+}
 
 
 // implementation of class BlockNode
@@ -181,6 +243,12 @@ BlockNode::~BlockNode()
 {
 }
 
+void BlockNode::accept(Visitor &v)
+{
+	v.enterBlockNode(this);
+	blockItems->accept(v);
+	v.visitBlockNode(this);
+}
 
 
 // implementation of class AssignStmtNode
@@ -194,6 +262,18 @@ AssignStmtNode::~AssignStmtNode()
 {
 }
 
+void AssignStmtNode::accept(Visitor &v)
+{
+	// In some cases (such as code generation), the visiting order should be changed
+	if (v.orderChanged) {
+		v.visitAssignStmtNode(this);
+		return;
+	}
+
+	lval->accept(v);
+	exp->accept(v);
+	v.visitAssignStmtNode(this);
+}
 
 
 // implementation of class FunCallStmtNode
@@ -209,6 +289,13 @@ FunCallStmtNode::~FunCallStmtNode()
 	delete name;
 }
 
+void FunCallStmtNode::accept(Visitor &v)
+{
+	if (hasArgs) {
+		argv->accept(v);
+	}
+	v.visitFunCallStmtNode(this);
+}
 
 
 // implementation of class BlockStmtNode
@@ -222,6 +309,11 @@ BlockStmtNode::~BlockStmtNode()
 {
 }
 
+void BlockStmtNode::accept(Visitor &v)
+{
+	block->accept(v);
+	v.visitBlockStmtNode(this);
+}
 
 
 // implementation of class CondNode
@@ -235,6 +327,19 @@ CondNode::~CondNode()
 {
 }
 
+void CondNode::accept(Visitor &v)
+{
+	// In some cases (such as code generation), the visiting order should be changed
+	if (v.orderChanged) {
+		v.visitCondNode(this);
+		return;
+	}
+
+	lhs->accept(v);
+	rhs->accept(v);
+	v.visitCondNode(this);
+}
+
 
 // implementation of class EmptyNode
 EmptyNode::EmptyNode()
@@ -243,6 +348,11 @@ EmptyNode::EmptyNode()
 
 EmptyNode::~EmptyNode()
 {
+}
+
+void EmptyNode::accept(Visitor &v)
+{
+	v.visitEmptyNode(this);
 }
 
 
@@ -258,6 +368,25 @@ IfStmtNode::~IfStmtNode()
 {
 }
 
+void IfStmtNode::accept(Visitor &v)
+{
+	// In some cases (such as code generation), the visiting order should be changed
+	if (v.orderChanged) {
+		v.visitIfStmtNode(this);
+		return;
+	}
+
+	v.enterIfStmtNode(this);
+
+	cond->accept(v);
+	then_stmt->accept(v);
+
+	if (hasElse) {
+		else_stmt->accept(v);
+	}
+
+	v.visitIfStmtNode(this);
+}
 
 
 // implementation of class WhileStmtNode
@@ -271,6 +400,23 @@ WhileStmtNode::~WhileStmtNode()
 {
 }
 
+void WhileStmtNode::accept(Visitor &v)
+{
+	// In some cases (such as code generation), the visiting order should be changed
+	if (v.orderChanged) {
+		v.visitWhileStmtNdoe(this);
+		return;
+	}
+
+	v.enterWhileStmtNode(this);
+
+	cond->accept(v);
+	do_stmt->accept(v);
+
+	v.visitWhileStmtNdoe(this);
+}
+
+
 // implementation of class BreakStmtNode
 BreakStmtNode::BreakStmtNode()
 {
@@ -279,6 +425,12 @@ BreakStmtNode::~BreakStmtNode()
 {
 }
 
+void BreakStmtNode::accept(Visitor &v)
+{
+	v.visitBreakStmtNode(this);
+}
+
+
 // implementation of class ContinueStmtNode
 ContinueStmtNode::ContinueStmtNode()
 {
@@ -286,6 +438,11 @@ ContinueStmtNode::ContinueStmtNode()
 
 ContinueStmtNode::~ContinueStmtNode()
 {
+}
+
+void ContinueStmtNode::accept(Visitor &v)
+{
+	v.visitContinueStmtNode(this);
 }
 
 
@@ -302,6 +459,19 @@ FuncDeclNode::~FuncDeclNode()
 	delete name;
 }
 
+void FuncDeclNode::accept(Visitor &v)
+{
+	// In some cases (such as code generation), the visiting order should be changed
+	if (v.orderChanged) {
+		v.visitFuncDeclNode(this);
+		return;
+	}
+
+	if (hasArgs) {
+		argv->accept(v);
+	}
+	v.visitFuncDeclNode(this);
+}
 
 
 // implementation of class FuncDefNode
@@ -315,6 +485,21 @@ FuncDefNode::~FuncDefNode()
 {
 }
 
+void FuncDefNode::accept(Visitor &v)
+{
+	// In some cases (such as code generation), the visiting order should be changed
+	if (v.orderChanged) {
+		v.visitFuncDefNode(this);
+		return;
+	}
+
+	v.enterFuncDefNode(this);
+
+	decl->accept(v);
+	block->accept(v);
+
+	v.visitFuncDefNode(this);
+}
 
 
 // implementation of class ConstDeclNode
@@ -328,6 +513,12 @@ ConstDeclNode::~ConstDeclNode()
 {
 }
 
+void ConstDeclNode::accept(Visitor &v)
+{
+	defList->accept(v);
+
+	v.visitConstDeclNode(this);
+}
 
 
 // implementation of class VarDeclNode
@@ -341,6 +532,12 @@ VarDeclNode::~VarDeclNode()
 {
 }
 
+void VarDeclNode::accept(Visitor &v)
+{
+	defList->accept(v);
+
+	v.visitVarDeclNode(this);
+}
 
 
 // implementation of class CompUnitNode
@@ -356,6 +553,16 @@ CompUnitNode::~CompUnitNode()
 void CompUnitNode::append(Node *node)
 {
 	nodes.push_back(node);
+}
+
+void CompUnitNode::accept(Visitor &v)
+{
+	for (std::list<Node *>::iterator it = nodes.begin();
+			it != nodes.end(); it++) {
+		(*it)->accept(v);
+	}
+
+	v.visitCompUnitNode(this);
 }
 
 

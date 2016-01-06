@@ -308,6 +308,10 @@ Decl: ConstDecl
 ConstDecl: CONST Type VarList SEMICOLON 
 		 	{
 				if (!errorFlag) {
+					for (std::list<Node*>::iterator it = ($3)->nodes.begin();
+							it != ($3)->nodes.end(); it++) 
+						dynamic_cast<VarDefNode *>(*it)->isConstant = true;
+
 					$$ = new ConstDeclNode($3);
 					$$->setLoc((Loc*)&(@$));
 					astNodes.push_back($$);
@@ -318,6 +322,10 @@ ConstDecl: CONST Type VarList SEMICOLON
 VarDecl: Type VarList SEMICOLON 
 	   		{
 				if (!errorFlag) {
+					for (std::list<Node*>::iterator it = ($2)->nodes.begin();
+							it != ($2)->nodes.end(); it++) 
+						dynamic_cast<VarDefNode *>(*it)->isConstant = false;
+				
 					$$ = new VarDeclNode($2);
 					$$->setLoc((Loc*)&(@$));
 					astNodes.push_back($$);

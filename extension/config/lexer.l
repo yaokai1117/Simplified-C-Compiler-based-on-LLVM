@@ -4,8 +4,7 @@
 #include <cctype>
 #include <cstdlib>
 #include <string>
-class Node;
-class NodeList;
+#include "node.h"
 #include "tok.h"
 
 int yycolumn = 1;
@@ -57,6 +56,7 @@ char 		{return CHARTYPE;}
 if 			{return IF;}
 else 		{return ELSE;}
 while  		{return WHILE;}
+return 		{return RETURN;}
 break 		{return BREAK;}
 continue 	{return CONTINUE;}
 void 		{return VOID;}

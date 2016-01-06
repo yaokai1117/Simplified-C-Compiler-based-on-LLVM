@@ -17,10 +17,8 @@ typedef enum {
 	ARRAY_ITEM_AST,
 	BINARY_EXP_AST,
 	UNARY_EXP_AST,
+	FUN_CALL_AST,
 
-	// const definition types
-	ID_CONST_DEF_AST,
-	ARRAY_CONST_DEF_AST,
 	// variable definition types
 	ID_VAR_DEF_AST,
 	ARRAY_VAR_DEF_AST,
@@ -34,6 +32,7 @@ typedef enum {
 	BLOCK_STMT_AST,
 	IF_STMT_AST,
 	WHILE_STMT_AST,
+	RETURN_STMT_AST,
 
 	FUNC_DECL_AST,
 	FUNC_DEF_AST,
@@ -62,6 +61,20 @@ typedef struct {
     int last_column;
 } Loc;
 
+typedef enum {
+	INT_TYPE,
+	FLOAT_TYPE,
+	CHAR_TYPE,
+	VOID_TYPE,
+	STUCT_TYPE,
+	NO_TYPE
+} ValueType;
+
+typedef struct {
+	ValueType type;
+	std::string *structName;
+} ValueTypeS;
+
 
 class Visitor;
 
@@ -73,6 +86,7 @@ public:
     void setLoc(Loc* loc);
 	virtual void accept(Visitor &visitor) = 0;
 
+	ValueTypeS valueTy;
     NodeType type;
     Loc* loc;
 };
@@ -170,6 +184,18 @@ public:
 
 	std::string *name;
 	ExpNode *index;
+};
+
+
+class FunCallNode : public ExpNode {
+public:
+	FunCallNode(std::string *name, NodeList *argv);
+	~FunCallNode();
+	virtual void accept(Visitor &visitor);
+
+    bool hasArgs;
+    NodeList *argv;
+	std::string *name;
 };
 
 
@@ -275,13 +301,11 @@ public:
 
 class FunCallStmtNode : public StmtNode {
 public:
-	FunCallStmtNode(std::string *name, NodeList *argv);
+	FunCallStmtNode(FunCallNode *funCall);
 	~FunCallStmtNode();
 	virtual void accept(Visitor &visitor);
 
-    bool hasArgs;
-    NodeList *argv;
-	std::string *name;
+	FunCallNode *funCall;
 };
 
 
@@ -328,6 +352,16 @@ public:
 
 	CondNode *cond;
 	StmtNode *do_stmt;
+};
+
+
+class ReturnStmtNode : public StmtNode {
+public:
+	ReturnStmtNode(ExpNode *exp);
+	~ReturnStmtNode();
+	virtual void accept(Visitor &visitor);
+
+	ExpNode *exp;
 };
 
 

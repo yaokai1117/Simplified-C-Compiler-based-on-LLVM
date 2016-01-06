@@ -4,25 +4,24 @@ extern void println(int c);
 extern void print_space();
 extern void print_newline();
 
-void add(int a, int b)
+int add(int a, int b, int c)
 {
-	println(a + b);
+	if (c == 0)
+		return a+b;
+	else if (c == 1)
+		return a-b;
+	else
+		return a*b;
 }
 
-void sub(int a, int b)
+int max(int a, int b)
 {
-	println(a - b);
+	if (a > b)
+		return a;
+	else
+		return b;
 }
 
-void multi(int a, int b)
-{
-	println(a * b);
-}
-
-void div(int a, int b)
-{
-	println(a / b);
-}
 
 void main()
 {
@@ -31,8 +30,11 @@ void main()
 	print_space();
 	println(b);
 
-	add(a, b);
-	sub(a, b);
-	multi(a, b);
-	div(a, b);
+	println(add(a, b, 0));
+	println(add(a, b, 1));
+	println(add(a, b, 2));
+
+	println(add(a, b, 0) + add(a, b, 1) + add(a, b, 3) -20);
+
+	println(max(a, b));
 }

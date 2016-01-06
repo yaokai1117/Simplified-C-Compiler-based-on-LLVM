@@ -17,6 +17,7 @@ public:
 	virtual void visitUnaryExpNode(UnaryExpNode *node) = 0;
 	virtual void visitIdNode(IdNode *node) = 0;
 	virtual void visitArrayItemNdoe(ArrayItemNode *node) = 0;
+	virtual void visitFunCallNode(FunCallNode *node) = 0;
 	virtual void visitIdVarDefNode(IdVarDefNode *node) = 0;
 	virtual void visitArrayVarDefNode(ArrayVarDefNode *node) = 0;
 	virtual void visitEmptyNode(EmptyNode *node) = 0;
@@ -29,6 +30,7 @@ public:
 	virtual void visitCondNode(CondNode *node) = 0;
 	virtual void visitIfStmtNode(IfStmtNode *node) = 0;
 	virtual void visitWhileStmtNdoe(WhileStmtNode *node) = 0;
+	virtual void visitReturnStmtNdoe(ReturnStmtNode *node) = 0;
 	virtual void visitBreakStmtNode(BreakStmtNode *node) = 0;
 	virtual void visitContinueStmtNode(ContinueStmtNode *node) = 0;
 	virtual void visitFuncDeclNode(FuncDeclNode *node) = 0;

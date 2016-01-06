@@ -17,7 +17,7 @@ bin/compiler: bin/lexer.o bin/parser.o bin/main.o bin/util.o bin/global.o bin/ms
 
 bin/main.o: src/main.cpp include/tok.h include/util.h include/global.h include/node.h
 	@mkdir -p bin
-	$(CC) $(CFLAGS) -c -o $@ $<
+	$(CC) $(CFLAGS) $(LLVM_CXX_FLAG) -c -o $@ $<
 
 bin/parser.o: src/parser.cpp include/util.h include/global.h include/msgfactory.h include/node.h
 	@mkdir -p bin
@@ -55,10 +55,10 @@ bin/msgfactory.o: src/msgfactory.cpp include/msgfactory.h include/global.h inclu
 	@mkdir -p bin
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-src/lexer.cpp: config/lexer.l config/parser.y
+src/lexer.cpp: config/lexer.l config/parser.y include/node.h
 	$(LEX) $(LFLAGS) -o $@ $<
 
-src/parser.cpp include/tok.h: config/parser.y
+src/parser.cpp include/tok.h: config/parser.y include/node.h
 	$(YACC) $(YFLAGS) -v --defines=include/tok.h -o src/parser.cpp $<
 
 bin/libexternfunc.so: src/libexternfunc.c

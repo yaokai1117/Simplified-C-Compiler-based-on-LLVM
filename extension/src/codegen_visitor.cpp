@@ -25,9 +25,9 @@
 using namespace llvm;
 
 
-static Module *TheModule;
-static ExecutionEngine *TheExecutionEngine;
-static FunctionPassManager *TheFPM;
+extern Module *TheModule;
+extern ExecutionEngine *TheExecutionEngine;
+extern FunctionPassManager *TheFPM;
 static IRBuilder<> Builder(llvm::getGlobalContext());
 
 Value *CodegenVisitor::lookUp(std::string nameStr, bool &isConst)
@@ -78,50 +78,6 @@ CodegenVisitor::CodegenVisitor(std::string output_filename)
 {
 	StackPtr = 0;
 	orderChanged = true;
-
-    InitializeNativeTarget();
-    InitializeNativeTargetAsmPrinter();
-    InitializeNativeTargetAsmParser();
-
-    LLVMContext &Context = getGlobalContext();
-    std::unique_ptr<Module> Owner = make_unique<Module>("Yao Kai's compiler !!!", Context);
-    TheModule = Owner.get();
-
-    std::string ErrStr;
-    TheExecutionEngine =
-    		EngineBuilder(std::move(Owner))
-              .setErrorStr(&ErrStr)
-              .setMCJITMemoryManager(llvm::make_unique<llvm::SectionMemoryManager>())
-              .create();
-    if (!TheExecutionEngine) {
-        fprintf(stdout, "Could not create ExecutionEngine: %s\n", ErrStr.c_str());
-        exit(1);
-    }
-
-    FunctionPassManager OurFPM(TheModule);
-
-    // Set up the optimizer pipeline.  Start with registering info about how the
-    // target lays out data structures.
-    TheModule->setDataLayout(TheExecutionEngine->getDataLayout());
-    OurFPM.add(new llvm::DataLayoutPass());
-    // Provide basic AliasAnalysis support for GVN.
-    OurFPM.add(llvm::createBasicAliasAnalysisPass());
-    // Promote allocas to registers.
-    OurFPM.add(llvm::createPromoteMemoryToRegisterPass());
-    // Do simple "peephole" optimizations and bit-twiddling optzns.
-    OurFPM.add(llvm::createInstructionCombiningPass());
-    // Reassociate expressions.
-    OurFPM.add(llvm::createReassociatePass());
-    // Eliminate Common SubExpressions.
-    OurFPM.add(llvm::createGVNPass());
-    // Simplify the control flow graph (deleting unreachable blocks, etc).
-    OurFPM.add(llvm::createCFGSimplificationPass());
-
-    OurFPM.doInitialization();
-
-    // Set the global so the code gen can use this.
-    TheFPM = &OurFPM;
-
 }
 
 
@@ -266,6 +222,22 @@ void CodegenVisitor::visitArrayItemNdoe(ArrayItemNode *node)
 	Value *arrayItemPtr = Builder.CreateGEP(arrayPtr, idxList, "array_ptr");
 	Value *retV = Builder.CreateLoad(arrayItemPtr, "array_item_" + *(node->name));
 
+	pending.insert(pending.end(), retV);
+}
+
+
+void CodegenVisitor::visitFunCallNode(FunCallNode *node)
+{
+	// Look up the name in the global module table.
+	Function *calleeF = TheModule->getFunction(*(node->name));
+
+	std::list<Node *> arguments;
+	if (node->hasArgs)
+		arguments = node->argv->nodes;
+
+	std::vector<Value *> argsV = getValuesFromStack(arguments.size());
+
+	Value *retV = Builder.CreateCall(calleeF, argsV);
 	pending.insert(pending.end(), retV);
 }
 
@@ -494,17 +466,7 @@ void CodegenVisitor::visitAssignStmtNode(AssignStmtNode *node)
 
 void CodegenVisitor::visitFunCallStmtNode(FunCallStmtNode *node)
 {
-	// Look up the name in the global module table.
-	Function *calleeF = TheModule->getFunction(*(node->name));
-
-	std::list<Node *> arguments;
-	if (node->hasArgs)
-		arguments = node->argv->nodes;
-
-	std::vector<Value *> argsV = getValuesFromStack(arguments.size());
-
-	Value *retV = Builder.CreateCall(calleeF, argsV);
-	pending.insert(pending.end(), retV);
+	pending.pop_back();
 }
 
 
@@ -715,6 +677,15 @@ void CodegenVisitor::visitWhileStmtNdoe(WhileStmtNode *node)
 }
 
 
+void CodegenVisitor::visitReturnStmtNdoe(ReturnStmtNode *node)
+{
+	Value *retV = pending.back();
+	pending.pop_back();
+
+	Builder.CreateStore(retV, returnValue);
+}
+
+
 void CodegenVisitor::visitBreakStmtNode(BreakStmtNode *node)
 {
 }
@@ -733,8 +704,14 @@ void CodegenVisitor::visitFuncDeclNode(FuncDeclNode *node)
 		argNames = node->argv->nodes;
 
 	std::vector<Type *> Ints(argNames.size(), Type::getInt32Ty(getGlobalContext()));
+	// debug
+	Type *resultTy;
+	if (node->valueTy.type == VOID_TYPE)
+		resultTy = Type::getVoidTy(getGlobalContext());
+	else
+		resultTy = Type::getInt32Ty(getGlobalContext());
 	FunctionType *FT =
-			FunctionType::get(Type::getVoidTy(getGlobalContext()), Ints, false);
+			FunctionType::get(resultTy, Ints, false);
 	Function *F =
 	      Function::Create(FT, Function::ExternalLinkage, name->c_str(), TheModule);
 
@@ -772,6 +749,12 @@ void CodegenVisitor::visitFuncDefNode(FuncDefNode *node)
 	BasicBlock *BB = BasicBlock::Create(getGlobalContext(), "entry", F);
 	Builder.SetInsertPoint(BB);
 
+	// create end function BB
+	funcEndBB = BasicBlock::Create(getGlobalContext(), "end_function");
+
+	// create an alloca for return value
+	returnValue = Builder.CreateAlloca(Type::getInt32Ty(getGlobalContext()), 0, "return_value");
+
 	// create an alloca for each argument
 	for (Function::arg_iterator aIt = F->arg_begin(); aIt != F->arg_end(); aIt++) {
 		AllocaInst *alloca = Builder.CreateAlloca(Type::getInt32Ty(getGlobalContext()), 0, aIt->getName());
@@ -782,14 +765,21 @@ void CodegenVisitor::visitFuncDefNode(FuncDefNode *node)
 
 	node->block->accept(*this);
 
+	Builder.CreateBr(funcEndBB);
+	F->getBasicBlockList().push_back(funcEndBB);
+	Builder.SetInsertPoint(funcEndBB);
 
-    Builder.CreateRetVoid();
+	if (node->decl->valueTy.type == VOID_TYPE)
+		Builder.CreateRetVoid();
+	else
+		Builder.CreateRet(Builder.CreateLoad(returnValue));
+
 
     // validate the generated code, checking for consistency
 	verifyFunction(*F);
 
 	// optimize the function
-	//TheFPM->run(*F);
+	TheFPM->run(*F);
 
 	// exit current scope
 	StackPtr--;

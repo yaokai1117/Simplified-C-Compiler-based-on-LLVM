@@ -113,6 +113,17 @@ void DumpDotVisitor::visitArrayItemNdoe(ArrayItemNode *node)
 }
 
 
+void DumpDotVisitor::visitFunCallNode(FunCallNode *node)
+{
+	int nThis = dumper->newNode(4, node->name->c_str(), "\\(", " ", "\\)");
+	if (node->hasArgs) {
+		int length = node->argv->nodes.size();
+		dumpList(length, nThis, 2);
+	}
+	pending.insert(pending.end(), nThis);
+}
+
+
 void DumpDotVisitor::visitIdVarDefNode(IdVarDefNode *node)
 {
 	int nThis = 0;
@@ -205,12 +216,6 @@ void DumpDotVisitor::visitAssignStmtNode(AssignStmtNode *node)
 
 void DumpDotVisitor::visitFunCallStmtNode(FunCallStmtNode *node)
 {
-	int nThis = dumper->newNode(4, node->name->c_str(), "\\(", " ", "\\)");
-	if (node->hasArgs) {
-		int length = node->argv->nodes.size();
-		dumpList(length, nThis, 2);
-	}
-	pending.insert(pending.end(), nThis);
 }
 
 
@@ -326,6 +331,18 @@ void DumpDotVisitor::visitWhileStmtNdoe(WhileStmtNode *node)
 
 	dumper->drawLine(nThis, 1, nCond);
 	dumper->drawLine(nThis, 2, nDo);
+	pending.insert(pending.end(), nThis);
+}
+
+
+void DumpDotVisitor::visitReturnStmtNdoe(ReturnStmtNode *node)
+{
+	int nThis = dumper->newNode(2, "return", " ");
+
+	int nExp  = pending.back();
+	pending.pop_back();
+
+	dumper->drawLine(nThis, 1, nExp);
 	pending.insert(pending.end(), nThis);
 }
 

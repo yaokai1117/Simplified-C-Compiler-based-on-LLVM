@@ -3,6 +3,14 @@ extern void print(int c);
 extern void print_space();
 extern void print_newline();
 
+int label = 233;
+
+int func()
+{
+	label = 450;
+	return 3;
+}
+
 void main()
 {
 
@@ -29,6 +37,17 @@ void main()
 		print(1);
 	else
 		print(0);
+
+	print_newline();
+
+	if ((1 < 0) && (func() > 0))
+		print(2333);
+	else
+		print(4500);
+	
+	print_newline();
+
+	print(label);
 
 	print_newline();
 

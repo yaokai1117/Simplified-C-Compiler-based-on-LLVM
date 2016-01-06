@@ -11,6 +11,7 @@ namespace llvm {
 class Value;
 class AllocaInst;
 class GlobalVariable;
+class BasicBlock;
 }
 
 class CodegenVisitor : public Visitor {
@@ -28,6 +29,7 @@ public:
 	virtual void visitUnaryExpNode(UnaryExpNode *node);
 	virtual void visitIdNode(IdNode *node);
 	virtual void visitArrayItemNdoe(ArrayItemNode *node);
+	virtual void visitFunCallNode(FunCallNode *node);
 	virtual void visitIdVarDefNode(IdVarDefNode *node);
 	virtual void visitArrayVarDefNode(ArrayVarDefNode *node);
 	virtual void visitEmptyNode(EmptyNode *node);
@@ -40,6 +42,7 @@ public:
 	virtual void visitCondNode(CondNode *node);
 	virtual void visitIfStmtNode(IfStmtNode *node);
 	virtual void visitWhileStmtNdoe(WhileStmtNode *node);
+	virtual void visitReturnStmtNdoe(ReturnStmtNode *node);
 	virtual void visitBreakStmtNode(BreakStmtNode *node);
 	virtual void visitContinueStmtNode(ContinueStmtNode *node);
 	virtual void visitFuncDeclNode(FuncDeclNode *node);
@@ -58,6 +61,8 @@ private:
 	int StackPtr;
 
 	std::vector<llvm::Value *> pending;
+	llvm::BasicBlock *funcEndBB;
+	llvm::AllocaInst *returnValue;
 
 	llvm::Value *lookUp(std::string nameStr, bool &isConst);
 	std::vector<llvm::Value *> getValuesFromStack(int size);

@@ -178,6 +178,28 @@ void ArrayItemNode::accept(Visitor &v)
 }
 
 
+// implementation of class FunCallNode
+FunCallNode::FunCallNode(std::string *name, NodeList *argv)
+	: name(name), argv(argv)
+{
+	type = FUN_CALL_AST;
+	hasArgs = (argv != NULL);
+}
+
+FunCallNode::~FunCallNode()
+{
+	delete name;
+}
+
+void FunCallNode::accept(Visitor &v)
+{
+	if (hasArgs) {
+		argv->accept(v);
+	}
+	v.visitFunCallNode(this);
+}
+
+
 // implementation of class IdVarDefNode
 IdVarDefNode::IdVarDefNode(std::string *name, ExpNode *value=NULL)
 	: value(value)
@@ -277,23 +299,19 @@ void AssignStmtNode::accept(Visitor &v)
 
 
 // implementation of class FunCallStmtNode
-FunCallStmtNode::FunCallStmtNode(std::string *name, NodeList *argv)
-	: name(name), argv(argv)
+FunCallStmtNode::FunCallStmtNode(FunCallNode *funCall)
+	: funCall(funCall)
 {
 	type = FUNCALL_STMT_AST;
-	hasArgs = (argv != NULL);
 }
 
 FunCallStmtNode::~FunCallStmtNode()
 {
-	delete name;
 }
 
 void FunCallStmtNode::accept(Visitor &v)
 {
-	if (hasArgs) {
-		argv->accept(v);
-	}
+	funCall->accept(v);
 	v.visitFunCallStmtNode(this);
 }
 
@@ -414,6 +432,23 @@ void WhileStmtNode::accept(Visitor &v)
 	do_stmt->accept(v);
 
 	v.visitWhileStmtNdoe(this);
+}
+
+
+ReturnStmtNode::ReturnStmtNode(ExpNode *exp)
+	: exp(exp)
+{
+	type = RETURN_STMT_AST;
+}
+
+ReturnStmtNode::~ReturnStmtNode()
+{
+}
+
+void ReturnStmtNode::accept(Visitor &v)
+{
+	exp->accept(v);
+	v.visitReturnStmtNdoe(this);
 }
 
 

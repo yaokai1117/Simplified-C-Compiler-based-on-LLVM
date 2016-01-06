@@ -35,11 +35,12 @@ void clearAstNodes();
 	std::string *name;
 	Node *node;
 	NodeList *nodeList;
+	ValueTypeS type;
 }
 
 
 %token CONST INTTYPE FLOATTYPE CHARTYPE EXTERN 
-%token IF ELSE WHILE VOID ID NUM FNUM CHAR BREAK CONTINUE
+%token IF ELSE WHILE VOID ID NUM FNUM CHAR RETURN BREAK CONTINUE
 %token ASIGN LBRACE RBRACE LBRACKET RBRACKET LPARENT RPARENT 
 %token COMMA SEMICOLON ERR_RPARENT 
 
@@ -48,6 +49,9 @@ void clearAstNodes();
 
 %precedence MISSING_RPARENT
 %precedence RPARENT LPARENT ERR_RPARENT
+
+%precedence FUNCALL
+%precedence SEMICOLON
 
 %left error  /*not good, but useful here*/
 %left OR
@@ -64,9 +68,10 @@ void clearAstNodes();
 %type <fval> FNUM
 %type <cval> CHAR
 %type <name> ID
-%type <node> CompUnit CompUnitItem ExternDecl FuncDecl FuncDef LVal Exp Decl ConstDecl VarDecl Var 
+%type <node> CompUnit CompUnitItem ExternDecl FuncDecl FuncDef FunCall LVal Exp Decl ConstDecl VarDecl Var 
 %type <node> Block BlockItem Stmt Cond
 %type <nodeList> ExpList VarList BlockItemList ArgNameList
+%type <type> Type
 
 %destructor {
 	delete ($$);
@@ -109,7 +114,7 @@ CompUnitItem: Decl
 					$$ = $1;
 				}
 			}
-		| FuncDecl		 			
+		| FuncDecl SEMICOLON		 			
 			{
 				if (!errorFlag) {
 					$$ = $1;
@@ -171,6 +176,14 @@ Exp: LVal
 				$$ = new CharNode($1);
 				$$->setLoc((Loc*)&(@$));
 				astNodes.push_back($$);
+			}
+		}
+
+   | FunCall %prec FUNCALL
+   		{
+			if (!errorFlag) {
+				$$ = $1;
+				$$->setLoc((Loc*)&(@$));
 			}
 		}
    | LPARENT Exp RPARENT 
@@ -287,9 +300,38 @@ ExpList: Exp
 	   ;
 
 Type: INTTYPE
+		{
+			$$.type = INT_TYPE;
+		}
 	| FLOATTYPE
+		{
+			$$.type = FLOAT_TYPE;
+		}
 	| CHARTYPE
+		{
+			$$.type = CHAR_TYPE;
+		}
+	| VOID
+		{
+			$$.type = VOID_TYPE;
+		}
 	;
+
+
+ExternDecl: EXTERN FuncDecl SEMICOLON
+	   		{
+				if (!errorFlag) {
+					$$ = $2;
+					$$->setLoc((Loc*)&(@$));
+				}
+			}
+		| EXTERN Decl
+			{
+				if (!errorFlag) {
+					$$ = $2;
+				}
+			}
+	   ;
 
 Decl: ConstDecl 		
 		{
@@ -305,16 +347,16 @@ Decl: ConstDecl
 		}
 	;
 
-ConstDecl: CONST Type VarList SEMICOLON 
+ConstDecl: CONST VarDecl
 		 	{
 				if (!errorFlag) {
-					for (std::list<Node*>::iterator it = ($3)->nodes.begin();
-							it != ($3)->nodes.end(); it++) 
-						dynamic_cast<VarDefNode *>(*it)->isConstant = true;
+					std::list<Node *> &nodes = ((VarDeclNode*)$2)->defList->nodes;
+					for (std::list<Node*>::iterator it = nodes.begin();
+							it != nodes.end(); it++) 
+						dynamic_cast<VarDefNode*>(*it)->isConstant = true;
 
-					$$ = new ConstDeclNode($3);
+					$$ = $2;
 					$$->setLoc((Loc*)&(@$));
-					astNodes.push_back($$);
 				}
 			}
 		 ;
@@ -323,8 +365,10 @@ VarDecl: Type VarList SEMICOLON
 	   		{
 				if (!errorFlag) {
 					for (std::list<Node*>::iterator it = ($2)->nodes.begin();
-							it != ($2)->nodes.end(); it++) 
-						dynamic_cast<VarDefNode *>(*it)->isConstant = false;
+							it != ($2)->nodes.end(); it++) {
+						dynamic_cast<VarDefNode*>(*it)->isConstant = false;
+						dynamic_cast<VarDefNode*>(*it)->valueTy = $1;	
+					}
 				
 					$$ = new VarDeclNode($2);
 					$$->setLoc((Loc*)&(@$));
@@ -433,11 +477,11 @@ ArgNameList: Type ID
 		}
 	  ;
 
-
-FuncDecl: VOID ID LPARENT RPARENT SEMICOLON
+FuncDecl: Type ID LPARENT RPARENT
 			{
 				if (!errorFlag) {
 					$$ = new FuncDeclNode($2, NULL);
+					$$->valueTy = $1;
 					$$->setLoc((Loc*)&(@$));
 					astNodes.push_back($$);
 				}
@@ -445,10 +489,11 @@ FuncDecl: VOID ID LPARENT RPARENT SEMICOLON
 					delete $2;
 				}
 			}
-		| VOID ID LPARENT ArgNameList RPARENT SEMICOLON
+		| Type ID LPARENT ArgNameList RPARENT
 			{
 				if (!errorFlag) {
 					$$ = new FuncDeclNode($2, (NodeList*)$4);
+					$$->valueTy = $1;
 					$$->setLoc((Loc*)&(@$));
 					astNodes.push_back($$);
 				}
@@ -459,43 +504,41 @@ FuncDecl: VOID ID LPARENT RPARENT SEMICOLON
 		;
 
 
-ExternDecl: EXTERN FuncDecl
+FuncDef: FuncDecl Block 	
 	   		{
 				if (!errorFlag) {
-					$$ = $2;
+					$$ = new FuncDefNode((FuncDeclNode*)$1, (BlockNode*)$2);
 					$$->setLoc((Loc*)&(@$));
+					astNodes.push_back($$);
 				}
 			}
+		;
+
+
+FunCall: ID LPARENT RPARENT
+	   	{
+			if (!errorFlag) {
+				$$ = new FunCallNode($1, NULL);
+				$$->setLoc((Loc*)&(@$));
+				astNodes.push_back($$);
+			}
+			else {
+				delete $1;
+			}
+		}
+	   | ID LPARENT ExpList RPARENT
+	   	{
+			if (!errorFlag) {
+				$$ = new FunCallNode($1, (NodeList*)$3);
+				$$->setLoc((Loc*)&(@$));
+				astNodes.push_back($$);
+			}
+			else {
+				delete $1;
+			}
+		}
 	   ;
 
-
-FuncDef: VOID ID LPARENT RPARENT Block 	
-	   		{
-				if (!errorFlag) {
-					FuncDeclNode *decl = new FuncDeclNode($2, NULL);
-					decl->setLoc((Loc*)&(@$));
-					$$ = new FuncDefNode(decl, (BlockNode*)$5);
-					$$->setLoc((Loc*)&(@$));
-					astNodes.push_back($$);
-				}
-				else {
-					delete $2;
-				}
-			}
-		| VOID ID LPARENT ArgNameList RPARENT Block
-			{
-				if (!errorFlag) {
-					FuncDeclNode *decl = new FuncDeclNode($2, (NodeList*)$4);
-					decl->setLoc((Loc*)&(@$));
-					$$ = new FuncDefNode(decl, (BlockNode*)$6);
-					$$->setLoc((Loc*)&(@$));
-					astNodes.push_back($$);
-				}
-				else {
-					delete $2;
-				}
-			}
-		;
 
 Block: LBRACE BlockItemList RBRACE 
 	 	{
@@ -548,28 +591,12 @@ Stmt: LVal ASIGN Exp SEMICOLON
 			}
 		}
 
-
-	| ID LPARENT RPARENT SEMICOLON 
+	| FunCall SEMICOLON
 		{
 			if (!errorFlag) {
-				$$ = new FunCallStmtNode($1, NULL);
+				$$ = new FunCallStmtNode((FunCallNode*)($1));	
 				$$->setLoc((Loc*)&(@$));
 				astNodes.push_back($$);
-			}
-			else {
-				delete $1;
-			}
-		}
-
-	| ID LPARENT ExpList RPARENT SEMICOLON
-		{
-			if (!errorFlag) {
-				$$ = new FunCallStmtNode($1, $3);
-				$$->setLoc((Loc*)&(@$));
-				astNodes.push_back($$);
-			}
-			else {
-				delete $1;
 			}
 		}
 
@@ -604,6 +631,15 @@ Stmt: LVal ASIGN Exp SEMICOLON
 		{
 			if (!errorFlag) {
 				$$ = new WhileStmtNode((CondNode*)$3, (StmtNode*)$5);
+				$$->setLoc((Loc*)&(@$));
+				astNodes.push_back($$);
+			}
+		}
+
+	| RETURN Exp SEMICOLON
+		{
+			if (!errorFlag) {
+				$$ = new ReturnStmtNode((ExpNode*)$2);
 				$$->setLoc((Loc*)&(@$));
 				astNodes.push_back($$);
 			}

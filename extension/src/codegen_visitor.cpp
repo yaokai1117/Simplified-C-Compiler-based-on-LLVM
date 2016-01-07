@@ -204,6 +204,7 @@ void CodegenVisitor::visitIdNode(IdNode *node)
 
 void CodegenVisitor::visitArrayItemNdoe(ArrayItemNode *node)
 {
+	/*
 	bool isConst = false;
 	Value *arrayPtr = lookUp(*(node->name), isConst);
 
@@ -221,7 +222,8 @@ void CodegenVisitor::visitArrayItemNdoe(ArrayItemNode *node)
 
 	Value *arrayItemPtr = Builder.CreateGEP(arrayPtr, idxList, "array_ptr");
 	Value *retV = Builder.CreateLoad(arrayItemPtr, "array_item_" + *(node->name));
-
+	*/
+	Value *retV = ConstantInt::get(getGlobalContext(), APInt(32, 0, true));
 	pending.insert(pending.end(), retV);
 }
 
@@ -413,11 +415,6 @@ void CodegenVisitor::visitBlockNode(BlockNode *node)
 }
 
 
-void CodegenVisitor::visitConstDeclNode(ConstDeclNode *node)
-{
-}
-
-
 void CodegenVisitor::visitVarDeclNode(VarDeclNode *node)
 {
 }
@@ -442,6 +439,7 @@ void CodegenVisitor::visitAssignStmtNode(AssignStmtNode *node)
 	}
 	// "a[4] = b + 1;"
 	else {
+		/*
 		ArrayItemNode *arrayItemNode = dynamic_cast<ArrayItemNode *>(node->lval);
 
 		Value *arrayPtr = lookUp(*(arrayItemNode->name), isConst);
@@ -460,6 +458,7 @@ void CodegenVisitor::visitAssignStmtNode(AssignStmtNode *node)
 		Value *arrayItemPtr = Builder.CreateGEP(arrayPtr, idxList, "array_ptr");
 
 		Builder.CreateStore(expV, arrayItemPtr);
+		*/
 	}
 }
 

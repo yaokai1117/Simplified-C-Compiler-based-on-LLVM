@@ -25,7 +25,8 @@ enum MsgType {
 	e_unknown_function,
 	e_redefinition_of_identifier,
 	e_assign_to_constant,
-	e_argument_unmatch
+	e_argument_unmatch,
+	e_array_size_not_constant
 };
 
 // base class of compiling message

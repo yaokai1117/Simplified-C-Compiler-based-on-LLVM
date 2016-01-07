@@ -61,6 +61,7 @@ break 		{return BREAK;}
 continue 	{return CONTINUE;}
 void 		{return VOID;}
 extern 		{return EXTERN;}
+static 		{return STATIC;}
 {id} 		{
 				yylval.name = new std::string(yytext);
 				return ID;
@@ -100,6 +101,7 @@ extern 		{return EXTERN;}
 "*" 		{return MULT;}
 "/" 		{return DIV;}
 "%" 		{return MOD;}
+"&" 		{return SINGLE_AND;}
 "{" 		{return LBRACE;}
 "}" 		{return RBRACE;}
 "[" 		{return LBRACKET;}

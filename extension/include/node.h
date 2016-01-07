@@ -4,6 +4,9 @@
 #include <string>
 #include <list>
 
+class NodeList;
+class Visitor;
+
 
 using namespace std;
 
@@ -67,16 +70,33 @@ typedef enum {
 	CHAR_TYPE,
 	VOID_TYPE,
 	STUCT_TYPE,
+
+	ATOM_TYPE,
+	PTR_TYPE,
+	ARRAY_TYPE,
 	NO_TYPE
 } ValueType;
 
-typedef struct {
+
+typedef struct ValueTypeStuct{
 	ValueType type;
+	ValueType dstType;
+	bool isConstant;
+	bool isExtern;
+	bool isStatic;
+	int dim;
+	NodeList *base;
 	std::string *structName;
+	struct ValueTypeStuct *atom;
 } ValueTypeS;
 
 
-class Visitor;
+typedef union {
+	int ival;
+	double fval;
+	char cval;
+} ConstVal;
+
 
 
 class Node {
@@ -87,6 +107,7 @@ public:
 	virtual void accept(Visitor &visitor) = 0;
 
 	ValueTypeS valueTy;
+	ConstVal constVal;
     NodeType type;
     Loc* loc;
 };
@@ -94,6 +115,7 @@ public:
 class NodeList : public Node{
 public:
 	NodeList(Node *node);
+	NodeList();
 	~NodeList();
 	void append(Node *node);
 	virtual void accept(Visitor &visitor);
@@ -178,12 +200,12 @@ public:
 
 class ArrayItemNode : public LValNode {
 public:
-	ArrayItemNode(std::string *name, ExpNode *index);
+	ArrayItemNode(ExpNode *array, NodeList *index);
 	~ArrayItemNode();
 	virtual void accept(Visitor &visitor);
 
-	std::string *name;
-	ExpNode *index;
+	ExpNode *array;
+	NodeList *index;
 };
 
 
@@ -265,16 +287,6 @@ public:
 	virtual void accept(Visitor &visitor);
 
 	NodeList *blockItems;
-};
-
-
-class ConstDeclNode : public DeclNode {
-public:
-	ConstDeclNode(NodeList *defList);
-	~ConstDeclNode();
-	virtual void accept(Visitor &visitor);
-
-	NodeList *defList;
 };
 
 

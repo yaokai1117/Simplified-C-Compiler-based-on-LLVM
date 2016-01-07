@@ -2,6 +2,7 @@
 #include <cstdio>
 #include <string>
 #include <list>
+#include <map>
 #include "util.h"
 #include "global.h"
 #include "msgfactory.h"
@@ -19,6 +20,10 @@ extern list<Node*> astNodes;
 
 void clearAstNodes();
 
+static void insertType(ValueTypeS *pType, ValueTypeS *thisTy);
+static void setAtomType(ValueTypeS *pType, ValueTypeS atomTy);
+static void printType(ValueTypeS vType);
+
 %}
 
 %locations
@@ -35,11 +40,15 @@ void clearAstNodes();
 	std::string *name;
 	Node *node;
 	NodeList *nodeList;
-	ValueTypeS type;
+	ValueTypeS vType;
+	struct {
+		std::string *name;
+		ValueTypeS vType;
+	} var;
 }
 
 
-%token CONST INTTYPE FLOATTYPE CHARTYPE EXTERN 
+%token CONST INTTYPE FLOATTYPE CHARTYPE EXTERN STATIC
 %token IF ELSE WHILE VOID ID NUM FNUM CHAR RETURN BREAK CONTINUE
 %token ASIGN LBRACE RBRACE LBRACKET RBRACKET LPARENT RPARENT 
 %token COMMA SEMICOLON ERR_RPARENT 
@@ -60,18 +69,25 @@ void clearAstNodes();
 %left EQ NEQ
 %left LT GT LTE GTE
 %left PLUS MINUS
-%left MULT DIV MOD
+%left MULT DIV MOD SINGLE_AND
 
 %precedence NEG POS
+
+%precedence REF DEREF
+
+%precedence NO_BRACKET
+%precedence LBRACKET
 
 %type <ival> NUM
 %type <fval> FNUM
 %type <cval> CHAR
 %type <name> ID
-%type <node> CompUnit CompUnitItem ExternDecl FuncDecl FuncDef FunCall LVal Exp Decl ConstDecl VarDecl Var 
-%type <node> Block BlockItem Stmt Cond
-%type <nodeList> ExpList VarList BlockItemList ArgNameList
-%type <type> Type
+%type <node> CompUnit CompUnitItem FuncDef FunCall LVal Exp 
+%type <node> Decl ExternDecl FuncDecl ConstDecl StaticDecl  VarDecl VarDef AssignedVar
+%type <node> Block BlockItem Stmt Cond 
+%type <nodeList> ExpList VarList BlockItemList ArgNameList ArraySuffix
+%type <vType> Type
+%type <var> Var
 
 %destructor {
 	delete ($$);
@@ -114,6 +130,12 @@ CompUnitItem: Decl
 					$$ = $1;
 				}
 			}
+		| StaticDecl
+			{
+				if (!errorFlag) {
+					$$ = $1;
+				}
+			}
 		| FuncDecl SEMICOLON		 			
 			{
 				if (!errorFlag) {
@@ -135,17 +157,31 @@ LVal: ID
 				delete $1;
 			}
 		}
-	| ID LBRACKET Exp RBRACKET 
+	| Exp ArraySuffix %prec NO_BRACKET
 		{
 			if (!errorFlag) {
-				$$ = new ArrayItemNode($1, (ExpNode*)$3);
+				$$ = new ArrayItemNode((ExpNode*)$1, (NodeList*)$2);
 				$$->setLoc((Loc*)&(@$));
 				astNodes.push_back($$);
 			}
-			else {
-				delete $1;
+		}
+	| MULT Exp %prec REF
+		{
+			if (!errorFlag) {
+			 	$$ = new UnaryExpNode('*', (ExpNode*)$2);
+				$$->setLoc((Loc*)&(@$));
+				astNodes.push_back($$);
 			}
 		}
+   	| SINGLE_AND Exp %prec DEREF
+		{
+			if (!errorFlag) {
+			 	$$ = new UnaryExpNode('&', (ExpNode*)$2);
+				$$->setLoc((Loc*)&(@$));
+				astNodes.push_back($$);
+			}
+		}
+
 	;
 
 Exp: LVal 				
@@ -323,15 +359,38 @@ ExternDecl: EXTERN FuncDecl SEMICOLON
 				if (!errorFlag) {
 					$$ = $2;
 					$$->setLoc((Loc*)&(@$));
+					$$->valueTy.isExtern = true;
 				}
 			}
 		| EXTERN Decl
 			{
 				if (!errorFlag) {
 					$$ = $2;
+					$$->setLoc((Loc*)&(@$));
+					$$->valueTy.isExtern = true;
 				}
 			}
 	   ;
+
+
+StaticDecl: STATIC FuncDecl SEMICOLON
+		  	{
+				if (!errorFlag) {
+					$$ = $2;
+					$$->setLoc((Loc*)&(@$));
+					$$->valueTy.isStatic = true;
+				}
+			}
+		  | STATIC Decl
+		  	{
+				if (!errorFlag) {
+					$$ = $2;
+					$$->setLoc((Loc*)&(@$));
+					$$->valueTy.isStatic = true;
+				}
+			}
+		  ;
+
 
 Decl: ConstDecl 		
 		{
@@ -347,13 +406,16 @@ Decl: ConstDecl
 		}
 	;
 
+
 ConstDecl: CONST VarDecl
 		 	{
 				if (!errorFlag) {
 					std::list<Node *> &nodes = ((VarDeclNode*)$2)->defList->nodes;
 					for (std::list<Node*>::iterator it = nodes.begin();
-							it != nodes.end(); it++) 
+							it != nodes.end(); it++)  {
 						dynamic_cast<VarDefNode*>(*it)->isConstant = true;
+						(*it)->valueTy.isConstant = true;
+					}
 
 					$$ = $2;
 					$$->setLoc((Loc*)&(@$));
@@ -361,13 +423,16 @@ ConstDecl: CONST VarDecl
 			}
 		 ;
 
+
 VarDecl: Type VarList SEMICOLON 
 	   		{
 				if (!errorFlag) {
 					for (std::list<Node*>::iterator it = ($2)->nodes.begin();
 							it != ($2)->nodes.end(); it++) {
 						dynamic_cast<VarDefNode*>(*it)->isConstant = false;
-						dynamic_cast<VarDefNode*>(*it)->valueTy = $1;	
+						setAtomType(&((*it)->valueTy), $1);
+						printType((*it)->valueTy);
+						printf("\n");
 					}
 				
 					$$ = new VarDeclNode($2);
@@ -377,7 +442,7 @@ VarDecl: Type VarList SEMICOLON
 			}
 	   ;
 
-VarList: Var			
+VarList: VarDef			
 	   		{
 				if (!errorFlag) {
 					$$ = new NodeList($1);
@@ -385,7 +450,7 @@ VarList: Var
 					astNodes.push_back($$);
 				}
 			}
-	   | VarList COMMA Var 
+	   | VarList COMMA VarDef
 	   		{
 				if (!errorFlag) {
 					$1->append($3);
@@ -395,65 +460,146 @@ VarList: Var
 			}
 	   ;
 
-Var: ID 				
-   		{
+
+VarDef: Var
+	  	{
 			if (!errorFlag) {
-				$$ = new IdVarDefNode($1, NULL);
-				$$->setLoc((Loc*)&(@$));
-				astNodes.push_back($$);
-			}
-			else {
-				delete $1;
+				if ($1.vType.type == ARRAY_TYPE) {
+					$$ = new ArrayVarDefNode($1.name, NULL, NULL);
+					$$->setLoc((Loc*)&(@$));
+					$$->valueTy = $1.vType;
+					astNodes.push_back($$);
+
+				}
+				else {
+					$$ = new IdVarDefNode($1.name, NULL);
+					$$->setLoc((Loc*)&(@$));
+					$$->valueTy = $1.vType;
+					astNodes.push_back($$);
+
+				}
 			}
 		}
-   | ID LBRACKET Exp RBRACKET 
-   		{
-			if (!errorFlag) {
-				$$ = new ArrayVarDefNode($1, (ExpNode*)$3, NULL);
-				$$->setLoc((Loc*)&(@$));
-				astNodes.push_back($$);
-			}
-			else {
-				delete $1;
-			}
+	  | AssignedVar
+	  	{
+			$$ = $1;
 		}
-   | ID ASIGN Exp 		
-   		{
-			if (!errorFlag) {
-				$$ = new IdVarDefNode($1, (ExpNode*)$3);
-				$$->setLoc((Loc*)&(@$));
-				astNodes.push_back($$);
-			}
-			else {
-				delete $1;
-			}
-		}
-   | ID LBRACKET Exp RBRACKET ASIGN LBRACE ExpList RBRACE 
-   		{
-			if (!errorFlag) {
-				$$ = new ArrayVarDefNode($1, (ExpNode*)$3, $7);
-				$$->setLoc((Loc*)&(@$));
-				astNodes.push_back($$);
-			}
-			else {
-				delete $1;
-			}
-		}
-   | ID LBRACKET RBRACKET ASIGN LBRACE ExpList RBRACE 
-   		{
-			if (!errorFlag) {
-				$$ = new ArrayVarDefNode($1, NULL, $6);
-				$$->setLoc((Loc*)&(@$));
-				astNodes.push_back($$);
-			}
-			else {
-				delete $1;
-			}
-		}
-   ;
+	  ;
 
 
-ArgNameList: Type ID
+AssignedVar: Var ASIGN Exp
+		   	{
+				if (!errorFlag) {
+					$$ = new IdVarDefNode($1.name, (ExpNode*)$3);
+					$$->setLoc((Loc*)&(@$));
+					$$->valueTy = $1.vType;
+					astNodes.push_back($$);
+				}
+			}
+		   | Var ASIGN LBRACE ExpList RBRACE
+			{
+				if (!errorFlag) {
+					$$ = new ArrayVarDefNode($1.name, NULL, $4);
+					$$->setLoc((Loc*)&(@$));
+					$$->valueTy = $1.vType;
+					astNodes.push_back($$);
+				}
+			}
+		   ;
+
+
+Var: ID
+		{
+			if (!errorFlag) {
+				$$.name = $1;
+				$$.vType = (ValueTypeS){ATOM_TYPE, 		// type
+							NO_TYPE, 		// dstType
+							false, 			// isConstant
+							false, 			// isExtern
+							false, 			// isStatic
+							0, 				// dim
+							NULL, 			// bases
+							NULL, 			// structName
+							NULL}; 			// atom
+			}
+			else {
+				delete $1;
+			}
+		}
+
+	| MULT Var
+	 	{
+			if (!errorFlag) {
+				$$ = $2;
+				ValueTypeS *thisTy = new ValueTypeS;
+				*thisTy = (ValueTypeS){PTR_TYPE, 		// type
+							NO_TYPE, 		// dstType
+							false, 				// isConstant
+							false, 				// isExtern
+							false, 				// isStatic
+							0,  				// dim
+							NULL, 				// bases
+							NULL, 				// structName
+							NULL}; 				// atom
+				insertType(&($$.vType), thisTy);
+			}
+		}
+
+	| Var ArraySuffix %prec NO_BRACKET
+		{
+			if (!errorFlag) {
+				$$ = $1;
+				ValueTypeS *thisTy = new ValueTypeS;
+				*thisTy = (ValueTypeS){ARRAY_TYPE,  		// type
+							NO_TYPE, 		// dstType
+							false, 				// isConstant
+							false, 				// isExtern
+							false, 				// isStatic
+							$2->nodes.size(), 	// dim
+							(NodeList*)$2, 		// bases   
+							NULL, 				// structName
+							NULL};				// atom
+				insertType(&($$.vType), thisTy);
+			}
+		}
+
+	| LPARENT Var RPARENT
+		{
+			if (!errorFlag) {
+				$$ = $2;
+			}
+		}
+	;
+
+
+ArraySuffix: LBRACKET Exp RBRACKET
+		   	{
+				if (!errorFlag) {
+					$$ = new NodeList($2);
+					$$->setLoc((Loc*)&(@$));
+					astNodes.push_back($$);
+				}
+			}
+		   | LBRACKET RBRACKET
+		   	{
+				if (!errorFlag) {
+					$$ = new NodeList(NULL);
+					$$->setLoc((Loc*)&(@$));
+					astNodes.push_back($$);
+				}
+			}
+		   | ArraySuffix LBRACKET Exp RBRACKET
+		   	{
+				if (!errorFlag) {
+					$1->append($3);
+					$$ = $1;
+					$$->setLoc((Loc*)&(@$));
+				}
+			}
+		   ;
+
+
+ArgNameList: Type ID 
 	  	{
 			if (!errorFlag) {
 				$$ = new NodeList(new IdNode($2));
@@ -464,7 +610,7 @@ ArgNameList: Type ID
 				delete $2;
 			}
 		}
-	  | ArgNameList COMMA Type ID
+	  | ArgNameList COMMA Type ID 
 	  	{
 			if (!errorFlag) {
 				$1->append(new IdNode($4));
@@ -477,7 +623,7 @@ ArgNameList: Type ID
 		}
 	  ;
 
-FuncDecl: Type ID LPARENT RPARENT
+FuncDecl: Type ID LPARENT RPARENT 
 			{
 				if (!errorFlag) {
 					$$ = new FuncDeclNode($2, NULL);
@@ -489,7 +635,7 @@ FuncDecl: Type ID LPARENT RPARENT
 					delete $2;
 				}
 			}
-		| Type ID LPARENT ArgNameList RPARENT
+		| Type ID LPARENT ArgNameList RPARENT 
 			{
 				if (!errorFlag) {
 					$$ = new FuncDeclNode($2, (NodeList*)$4);
@@ -778,6 +924,62 @@ void clearAstNodes()
 	while (!astNodes.empty()) {
 	 	delete astNodes.front();
 		astNodes.pop_front();
+	}
+}
+
+static void insertType(ValueTypeS *pType, ValueTypeS *thisTy)
+{	
+	ValueTypeS *pre = pType;
+	while (pType->type != ATOM_TYPE) {
+		pre = pType;
+		pType = pType->atom;
+	}
+
+	// pTyte itself is an atom type
+	if (pType == pre) {
+		ValueTypeS tmp = *pType;
+		*pType = *thisTy;
+		pType->atom = thisTy;
+		*thisTy = tmp;
+		return;
+	}
+
+	// do insertion
+	pre->atom = thisTy;
+	thisTy->atom = pType;
+}
+
+static void setAtomType(ValueTypeS *pType, ValueTypeS atomTy)
+{
+	while (pType->type != ATOM_TYPE)
+		pType = pType->atom;
+	pType->type = atomTy.type;
+}
+
+static void printType(ValueTypeS vType)
+{
+	switch (vType.type) {
+	case INT_TYPE:
+		printf("int");
+		return;
+	case FLOAT_TYPE:
+		printf("float");
+		return;
+	case CHAR_TYPE:
+		printf("char");
+		return;
+	case PTR_TYPE:
+		printf("pointer( ");
+		printType(*(vType.atom));
+		printf(" )");
+		return;
+	case ARRAY_TYPE:
+		printf("array( ");
+		printType(*(vType.atom));
+		printf(" )");
+		return;
+	default:
+		return;
 	}
 }
 

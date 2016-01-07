@@ -33,6 +33,10 @@ NodeList::NodeList(Node *node)
 	nodes.push_back(node);
 }
 
+NodeList::NodeList()
+{
+}
+
 NodeList::~NodeList()
 {
 }
@@ -160,19 +164,19 @@ void IdNode::accept(Visitor &v)
 
 
 // implementation of class ArrayItemNode
-ArrayItemNode::ArrayItemNode(std::string *name, ExpNode *index)
-	: name(name), index(index)
+ArrayItemNode::ArrayItemNode(ExpNode *array, NodeList *index)
+	: array(array), index(index)
 {
 	type = ARRAY_ITEM_AST;
 }
 
 ArrayItemNode::~ArrayItemNode()
 {
-	delete name;
 }
 
 void ArrayItemNode::accept(Visitor &v)
 {
+	array->accept(v);
 	index->accept(v);
 	v.visitArrayItemNdoe(this);
 }
@@ -534,25 +538,6 @@ void FuncDefNode::accept(Visitor &v)
 	block->accept(v);
 
 	v.visitFuncDefNode(this);
-}
-
-
-// implementation of class ConstDeclNode
-ConstDeclNode::ConstDeclNode(NodeList *defList)
-	: defList(defList)
-{
-	type = CONST_DECL_AST;
-}
-
-ConstDeclNode::~ConstDeclNode()
-{
-}
-
-void ConstDeclNode::accept(Visitor &v)
-{
-	defList->accept(v);
-
-	v.visitConstDeclNode(this);
 }
 
 

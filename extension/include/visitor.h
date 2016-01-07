@@ -22,7 +22,6 @@ public:
 	virtual void visitArrayVarDefNode(ArrayVarDefNode *node) = 0;
 	virtual void visitEmptyNode(EmptyNode *node) = 0;
 	virtual void visitBlockNode(BlockNode *node) = 0;
-	virtual void visitConstDeclNode(ConstDeclNode *node) = 0;
 	virtual void visitVarDeclNode(VarDeclNode *node) = 0;
 	virtual void visitAssignStmtNode(AssignStmtNode *node) = 0;
 	virtual void visitFunCallStmtNode(FunCallStmtNode *node) = 0;

@@ -1,25 +1,14 @@
-#ifndef _CODEGEN_VISITOR_H_
-#define _CODEGEN_VISITOR_H_
+#ifndef _CHECK_VISITOR_H_
+#define _CHECK_VISITOR_H_
 
-#include <string>
-#include <map>
-#include <vector>
 #include "visitor.h"
-#include "node.h"
+#include <map>
 
-namespace llvm {
-class Value;
-class AllocaInst;
-class GlobalVariable;
-class BasicBlock;
-}
 
-class CodegenVisitor : public Visitor {
+class CheckVisitor : public Visitor {
 public:
-	CodegenVisitor(std::string output_filename);
-	~CodegenVisitor();
-
-	void dump();
+	CheckVisitor();
+	~CheckVisitor();
 
 	virtual void visitNodeList(NodeList *node);
 	virtual void visitNumNode(NumNode *node);
@@ -54,20 +43,16 @@ public:
 	virtual void enterFuncDefNode(FuncDefNode *node);
 
 private:
-	std::map<std::string, llvm::AllocaInst *> *ConstLocalTableStack[32];
-	std::map<std::string, llvm::AllocaInst *> *LocalTableStack[32];
-	std::map<std::string, llvm::GlobalVariable *> GloblalVariables;
-	int StackPtr;
+	std::vector<ValueTypeS> pending;
 
-	std::vector<llvm::Value *> pending;
-	llvm::BasicBlock *funcEndBB;
-	llvm::AllocaInst *returnValue;
+	std::vector< std::map<std::string, ValueTypeS> > symTableStack;
+	std::map<std::string, ValueTypeS> globalSymTabble;
+	int stackPtr;
 
-	llvm::Value *lookUp(std::string nameStr, bool &isConst);
-	std::vector<llvm::Value *> getValuesFromStack(int size);
+	ValueTypeS lookUpSym(std::string name);
+	void handleArrayType(ValueTypeS *vType);
 };
 
 
 
-
-#endif /* _CODEGEN_VISITOR_H_ */
+#endif /* _CHECK_VISITOR_H_ */

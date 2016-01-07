@@ -100,7 +100,8 @@ int main(int argc, char** argv)
     // Set the global so the code gen can use this.
     TheFPM = &OurFPM;
 
-    if (!errorFlag) {
+    //if (!errorFlag) {
+    if (false) {
     	CodegenVisitor codegenVisitor(ll_file_name);
     	root->accept(codegenVisitor);
 

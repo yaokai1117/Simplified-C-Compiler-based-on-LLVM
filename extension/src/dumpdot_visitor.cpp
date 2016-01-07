@@ -103,12 +103,15 @@ void DumpDotVisitor::visitIdNode(IdNode *node)
 
 void DumpDotVisitor::visitArrayItemNdoe(ArrayItemNode *node)
 {
-	int nThis = dumper->newNode(4, node->name->c_str(), "\\[", " ", "\\]");
+	int nThis = dumper->newNode(4, " ", "\\[", " ", "\\]");
 
-	int nIndex = pending.back();
+	int length = node->index->nodes.size();
+	dumpList(length, nThis, 2);
+	int nArray = pending.back();
 	pending.pop_back();
 
-	dumper->drawLine(nThis, 2, nIndex);
+	dumper->drawLine(nThis, 0, nArray);
+
 	pending.insert(pending.end(), nThis);
 }
 
@@ -157,9 +160,11 @@ void DumpDotVisitor::visitArrayVarDefNode(ArrayVarDefNode *node)
 	}
 	else {
 		nThis = dumper->newNode(4, node->name->c_str(), "\\[", " ", "\\]");
-		int nSize = pending.back();
-		pending.pop_back();
-		dumper->drawLine(nThis, 2, nSize);
+		if (node->hasSize) {
+			int nSize = pending.back();
+			pending.pop_back();
+			dumper->drawLine(nThis, 2, nSize);
+		}
 	}
 	pending.insert(pending.end(), nThis);
 }
@@ -181,15 +186,6 @@ void DumpDotVisitor::visitBlockNode(BlockNode *node)
 }
 
 
-void DumpDotVisitor::visitConstDeclNode(ConstDeclNode *node)
-{
-	int nThis = dumper->newNode(3, "const", "int", " ");
-	int length = node->defList->nodes.size();
-	dumpList(length, nThis, 2);
-	pending.insert(pending.end(), nThis);
-}
-
-
 void DumpDotVisitor::visitVarDeclNode(VarDeclNode *node)
 {
 	int nThis = dumper->newNode(2, "int", " ");
@@ -203,9 +199,9 @@ void DumpDotVisitor::visitAssignStmtNode(AssignStmtNode *node)
 {
 	int nThis = dumper->newNode(3, " ", "=", " ");
 
-	int nLVal = pending.back();
-	pending.pop_back();
 	int nExp = pending.back();
+	pending.pop_back();
+	int nLVal = pending.back();
 	pending.pop_back();
 
 	dumper->drawLine(nThis, 0, nLVal);

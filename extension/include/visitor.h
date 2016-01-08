@@ -16,7 +16,8 @@ public:
 	virtual void visitBinaryExpNode(BinaryExpNode *node) = 0;
 	virtual void visitUnaryExpNode(UnaryExpNode *node) = 0;
 	virtual void visitIdNode(IdNode *node) = 0;
-	virtual void visitArrayItemNdoe(ArrayItemNode *node) = 0;
+	virtual void visitArrayItemNode(ArrayItemNode *node) = 0;
+	virtual void visitStructItemNode(StructItemNode *node) = 0;
 	virtual void visitFunCallNode(FunCallNode *node) = 0;
 	virtual void visitIdVarDefNode(IdVarDefNode *node) = 0;
 	virtual void visitArrayVarDefNode(ArrayVarDefNode *node) = 0;
@@ -34,12 +35,14 @@ public:
 	virtual void visitContinueStmtNode(ContinueStmtNode *node) = 0;
 	virtual void visitFuncDeclNode(FuncDeclNode *node) = 0;
 	virtual void visitFuncDefNode(FuncDefNode *node) = 0;
+	virtual void visitStructDefNode(StructDefNode *node) = 0;
 	virtual void visitCompUnitNode(CompUnitNode *node) = 0;
 
 	virtual void enterBlockNode(BlockNode *node) = 0;
 	virtual void enterIfStmtNode(IfStmtNode *node) = 0;
 	virtual void enterWhileStmtNode(WhileStmtNode *node) = 0;
 	virtual void enterFuncDefNode(FuncDefNode *node) = 0;
+	virtual void enterStructDefNode(StructDefNode *node) = 0;
 
 	bool orderChanged;
 

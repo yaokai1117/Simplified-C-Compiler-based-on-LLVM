@@ -202,7 +202,7 @@ void CodegenVisitor::visitIdNode(IdNode *node)
 }
 
 
-void CodegenVisitor::visitArrayItemNdoe(ArrayItemNode *node)
+void CodegenVisitor::visitArrayItemNode(ArrayItemNode *node)
 {
 	/*
 	bool isConst = false;
@@ -225,6 +225,11 @@ void CodegenVisitor::visitArrayItemNdoe(ArrayItemNode *node)
 	*/
 	Value *retV = ConstantInt::get(getGlobalContext(), APInt(32, 0, true));
 	pending.insert(pending.end(), retV);
+}
+
+
+void CodegenVisitor::visitStructItemNode(StructItemNode *node)
+{
 }
 
 
@@ -789,6 +794,12 @@ void CodegenVisitor::visitFuncDefNode(FuncDefNode *node)
 }
 
 
+void CodegenVisitor::visitStructDefNode(StructDefNode *node)
+{
+	// need comptition
+}
+
+
 void CodegenVisitor::visitCompUnitNode(CompUnitNode *node)
 {
 }
@@ -813,4 +824,8 @@ void CodegenVisitor::enterFuncDefNode(FuncDefNode *node)
 {
 }
 
+
+void CodegenVisitor::enterStructDefNode(StructDefNode *node)
+{
+}
 

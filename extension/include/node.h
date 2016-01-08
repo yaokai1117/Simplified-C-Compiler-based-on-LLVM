@@ -18,6 +18,7 @@ typedef enum {
 	CHAR_AST,
 	ID_AST,
 	ARRAY_ITEM_AST,
+	STRUCT_ITEM_AST,
 	BINARY_EXP_AST,
 	UNARY_EXP_AST,
 	FUN_CALL_AST,
@@ -29,6 +30,8 @@ typedef enum {
 	BLOCK_AST,
 	CONST_DECL_AST,
 	VAR_DECL_AST,
+
+	STRUCT_DEF_AST,
 
 	ASSIGN_STMT_AST,
 	FUNCALL_STMT_AST,
@@ -69,11 +72,12 @@ typedef enum {
 	FLOAT_TYPE,
 	CHAR_TYPE,
 	VOID_TYPE,
-	STUCT_TYPE,
+	STRUCT_TYPE,
 
 	ATOM_TYPE,
 	PTR_TYPE,
 	ARRAY_TYPE,
+	FUNC_TYPE,
 	NO_TYPE
 } ValueType;
 
@@ -86,6 +90,7 @@ typedef struct ValueTypeStuct{
 	bool isStatic;
 	int dim;
 	NodeList *base;
+	NodeList *argv;
 	std::string *structName;
 	struct ValueTypeStuct *atom;
 } ValueTypeS;
@@ -206,6 +211,18 @@ public:
 
 	ExpNode *array;
 	NodeList *index;
+};
+
+
+class StructItemNode : public LValNode {
+public:
+	StructItemNode(ExpNode *stru, std::string *itemName, bool isPointer);
+	~StructItemNode();
+	virtual void accept(Visitor &visitor);
+
+	ExpNode *stru;
+	std::string *itemName;
+	bool isPointer;
 };
 
 
@@ -413,6 +430,16 @@ public:
 
 	FuncDeclNode *decl;
 	BlockNode *block;
+};
+
+class StructDefNode : public Node {
+public:
+	StructDefNode(std::string *name, NodeList *decls);
+	~StructDefNode();
+	virtual void accept(Visitor &visitor);
+
+	std::string *name;
+	NodeList *decls;
 };
 
 class CompUnitNode : public Node {

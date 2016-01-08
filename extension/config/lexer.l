@@ -53,6 +53,7 @@ const 		{return CONST;}
 int 		{return INTTYPE;}
 float 		{return FLOATTYPE;}
 char 		{return CHARTYPE;}
+struct 		{return STRUCT;}
 if 			{return IF;}
 else 		{return ELSE;}
 while  		{return WHILE;}
@@ -102,18 +103,14 @@ static 		{return STATIC;}
 "/" 		{return DIV;}
 "%" 		{return MOD;}
 "&" 		{return SINGLE_AND;}
+"." 		{return DOT;}
+"->" 		{return ARROW;}
 "{" 		{return LBRACE;}
 "}" 		{return RBRACE;}
 "[" 		{return LBRACKET;}
 "]" 		{return RBRACKET;}
-"(" 		{lparent_num++; return LPARENT;}
-")" 		{
-				lparent_num--;
-				if (lparent_num >= 0) 
-					return RPARENT;
-				else 
-					return ERR_RPARENT;
-			}
+"(" 		{return LPARENT;}
+")" 		{return RPARENT;}
 "=" 		{return ASIGN;}
 "," 		{return COMMA;}
 ";" 		{return SEMICOLON;}

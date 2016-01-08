@@ -28,7 +28,8 @@ public:
 	virtual void visitBinaryExpNode(BinaryExpNode *node);
 	virtual void visitUnaryExpNode(UnaryExpNode *node);
 	virtual void visitIdNode(IdNode *node);
-	virtual void visitArrayItemNdoe(ArrayItemNode *node);
+	virtual void visitArrayItemNode(ArrayItemNode *node);
+	virtual void visitStructItemNode(StructItemNode *node);
 	virtual void visitFunCallNode(FunCallNode *node);
 	virtual void visitIdVarDefNode(IdVarDefNode *node);
 	virtual void visitArrayVarDefNode(ArrayVarDefNode *node);
@@ -46,12 +47,14 @@ public:
 	virtual void visitContinueStmtNode(ContinueStmtNode *node);
 	virtual void visitFuncDeclNode(FuncDeclNode *node);
 	virtual void visitFuncDefNode(FuncDefNode *node);
+	virtual void visitStructDefNode(StructDefNode *node);
 	virtual void visitCompUnitNode(CompUnitNode *node);
 
 	virtual void enterBlockNode(BlockNode *node);
 	virtual void enterIfStmtNode(IfStmtNode *node);
 	virtual void enterWhileStmtNode(WhileStmtNode *node);
 	virtual void enterFuncDefNode(FuncDefNode *node);
+	virtual void enterStructDefNode(StructDefNode *node);
 
 private:
 	std::map<std::string, llvm::AllocaInst *> *ConstLocalTableStack[32];

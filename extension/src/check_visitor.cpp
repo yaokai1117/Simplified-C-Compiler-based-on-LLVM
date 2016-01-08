@@ -150,9 +150,15 @@ void CheckVisitor::visitIdNode(IdNode *node)
 }
 
 
-void CheckVisitor::visitArrayItemNdoe(ArrayItemNode *node)
+void CheckVisitor::visitArrayItemNode(ArrayItemNode *node)
 {
 }
+
+
+void CheckVisitor::visitStructItemNode(StructItemNode *node)
+{
+}
+
 
 
 void CheckVisitor::visitFunCallNode(FunCallNode *node)
@@ -164,11 +170,6 @@ void CheckVisitor::visitIdVarDefNode(IdVarDefNode *node)
 {
 	if (errorFlag)
 		return;
-
-	map<string, ValueTypeS> &symTable = symTableStack[stackPtr-1];
-	if (symTable.find(*(node->name)) != symTable.end()) {
-
-	}
 
 	ValueTypeS &vType = node->valueTy;
 
@@ -184,6 +185,14 @@ void CheckVisitor::visitIdVarDefNode(IdVarDefNode *node)
 			}
 		}
 	}
+
+
+
+	map<string, ValueTypeS> &symTable = symTableStack[stackPtr-1];
+	if (symTable.find(*(node->name)) != symTable.end()) {
+
+	}
+
 
 	if (node->isAssigned) {
 		if (typeIsEqual(vType, node->value->valueTy))
@@ -267,6 +276,11 @@ void CheckVisitor::visitFuncDefNode(FuncDefNode *node)
 }
 
 
+void CheckVisitor::visitStructDefNode(StructDefNode *node)
+{
+}
+
+
 void CheckVisitor::visitCompUnitNode(CompUnitNode *node)
 {
 }
@@ -290,3 +304,10 @@ void CheckVisitor::enterWhileStmtNode(WhileStmtNode *node)
 void CheckVisitor::enterFuncDefNode(FuncDefNode *node)
 {
 }
+
+
+void CheckVisitor::enterStructDefNode(StructDefNode *node)
+{
+}
+
+

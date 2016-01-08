@@ -1,12 +1,16 @@
 
-int add(int a, int b)
-{
-	return a + b;
-}
+int *a(int b, int*c)[3];
 
-int main()
+struct testS {
+	int num;
+	float fnum;
+	struct testS *next;
+};
+
+int main(int a)
 {
-	int (*a)[3][4];
-	int c = (*a)[1][0];
-	int d = add(a, v)[3];
+	int a;
+	b(2);
+	*a = b;
+	struct testS d;
 }

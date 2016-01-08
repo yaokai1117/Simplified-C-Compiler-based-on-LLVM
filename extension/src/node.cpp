@@ -178,7 +178,23 @@ void ArrayItemNode::accept(Visitor &v)
 {
 	array->accept(v);
 	index->accept(v);
-	v.visitArrayItemNdoe(this);
+	v.visitArrayItemNode(this);
+}
+
+
+// implementation of class StructItemNode
+StructItemNode::StructItemNode(ExpNode *stru, string *itemName, bool isPointer)
+	: stru(stru), itemName(itemName), isPointer(isPointer)
+{
+	type = STRUCT_ITEM_AST;
+}
+
+StructItemNode::~StructItemNode()
+{
+}
+
+void StructItemNode::accept(Visitor &v){
+
 }
 
 
@@ -557,6 +573,25 @@ void VarDeclNode::accept(Visitor &v)
 	defList->accept(v);
 
 	v.visitVarDeclNode(this);
+}
+
+
+// implementation of class StructDefNode
+StructDefNode::StructDefNode(string *name, NodeList *decls)
+	: name(name), decls(decls)
+{
+	type = STRUCT_DEF_AST;
+}
+
+StructDefNode::~StructDefNode()
+{
+}
+
+void StructDefNode::accept(Visitor &v)
+{
+	v.enterStructDefNode(this);
+	decls->accept(v);
+	v.visitStructDefNode(this);
 }
 
 

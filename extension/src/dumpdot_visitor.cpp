@@ -101,7 +101,7 @@ void DumpDotVisitor::visitIdNode(IdNode *node)
 }
 
 
-void DumpDotVisitor::visitArrayItemNdoe(ArrayItemNode *node)
+void DumpDotVisitor::visitArrayItemNode(ArrayItemNode *node)
 {
 	int nThis = dumper->newNode(4, " ", "\\[", " ", "\\]");
 
@@ -112,6 +112,20 @@ void DumpDotVisitor::visitArrayItemNdoe(ArrayItemNode *node)
 
 	dumper->drawLine(nThis, 0, nArray);
 
+	pending.insert(pending.end(), nThis);
+}
+
+
+void DumpDotVisitor::visitStructItemNode(StructItemNode *node)
+{
+	int nThis;
+	if (node->isPointer)
+		nThis = dumper->newNode(3, " ", "-\\>", node->itemName->c_str());
+	else
+		nThis = dumper->newNode(3, " ", ".", node->itemName->c_str());
+	int nStru = pending.back();
+	pending.pop_back();
+	dumper->drawLine(nThis, 0, nStru);
 	pending.insert(pending.end(), nThis);
 }
 
@@ -188,7 +202,25 @@ void DumpDotVisitor::visitBlockNode(BlockNode *node)
 
 void DumpDotVisitor::visitVarDeclNode(VarDeclNode *node)
 {
-	int nThis = dumper->newNode(2, "int", " ");
+	string typeStr;
+	switch (node->valueTy.type) {
+	case INT_TYPE:
+		typeStr = "int";
+		break;
+	case FLOAT_TYPE:
+		typeStr = "float";
+		break;
+	case CHAR_AST:
+		typeStr = "char";
+		break;
+	case STRUCT_TYPE:
+		typeStr = string("struct ") + *(node->valueTy.structName);
+		break;
+	default:
+		typeStr = "unknown type";
+		break;
+	}
+	int nThis = dumper->newNode(2, typeStr.c_str(), " ");
 	int length = node->defList->nodes.size();
 	dumpList(length, nThis, 1);
 	pending.insert(pending.end(), nThis);
@@ -384,6 +416,15 @@ void DumpDotVisitor::visitFuncDefNode(FuncDefNode *node)
 }
 
 
+void DumpDotVisitor::visitStructDefNode(StructDefNode *node)
+{
+	int nThis = dumper->newNode(3, "struct", node->name->c_str(), "\\{ \\}");
+	int length = node->decls->nodes.size();
+	dumpList(length, nThis, 2);
+	pending.insert(pending.end(), nThis);
+}
+
+
 void DumpDotVisitor::visitCompUnitNode(CompUnitNode *node)
 {
 	int nThis = dumper->newNode(1, "CompUnit");
@@ -409,6 +450,11 @@ void DumpDotVisitor::enterWhileStmtNode(WhileStmtNode *node)
 
 
 void DumpDotVisitor::enterFuncDefNode(FuncDefNode *node)
+{
+}
+
+
+void DumpDotVisitor::enterStructDefNode(StructDefNode *node)
 {
 }
 

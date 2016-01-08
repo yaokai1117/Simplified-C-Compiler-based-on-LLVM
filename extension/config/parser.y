@@ -8,9 +8,11 @@
 #include "msgfactory.h"
 #include "node.h"
 
+// debug
+#define YYDEBUG 1
+
 extern int yylex();
 extern int yyerror(const char *msg);
-extern int lparent_num;
 
 extern MsgFactory msgFactory;
 
@@ -26,10 +28,13 @@ static void printType(ValueTypeS vType);
 
 %}
 
+%debug
+
 %locations
 %initial-action 
 {
     msgFactory.initial(infile_name);	
+	yydebug = 0;
 };
 
 %union
@@ -49,20 +54,14 @@ static void printType(ValueTypeS vType);
 
 
 %token CONST INTTYPE FLOATTYPE CHARTYPE EXTERN STATIC
-%token IF ELSE WHILE VOID ID NUM FNUM CHAR RETURN BREAK CONTINUE
+%token IF ELSE WHILE VOID ID NUM FNUM CHAR RETURN BREAK CONTINUE STRUCT 
 %token ASIGN LBRACE RBRACE LBRACKET RBRACKET LPARENT RPARENT 
-%token COMMA SEMICOLON ERR_RPARENT 
+%token COMMA SEMICOLON  
 
 %precedence NO_ELSE
 %precedence ELSE
 
-%precedence MISSING_RPARENT
-%precedence RPARENT LPARENT ERR_RPARENT
 
-%precedence FUNCALL
-%precedence SEMICOLON
-
-%left error  /*not good, but useful here*/
 %left OR
 %left AND
 %left NOT
@@ -76,14 +75,16 @@ static void printType(ValueTypeS vType);
 %precedence REF DEREF
 
 %precedence NO_BRACKET
-%precedence LBRACKET
+
+%precedence RPARENT LPARENT LBRACKET RBRACKET DOT ARROW
+
 
 %type <ival> NUM
 %type <fval> FNUM
 %type <cval> CHAR
 %type <name> ID
 %type <node> CompUnit CompUnitItem FuncDef FunCall LVal Exp 
-%type <node> Decl ExternDecl FuncDecl ConstDecl StaticDecl  VarDecl VarDef AssignedVar
+%type <node> Decl ExternDecl ConstDecl StaticDecl VarDecl VarDef AssignedVar StructDef
 %type <node> Block BlockItem Stmt Cond 
 %type <nodeList> ExpList VarList BlockItemList ArgNameList ArraySuffix
 %type <vType> Type
@@ -136,7 +137,7 @@ CompUnitItem: Decl
 					$$ = $1;
 				}
 			}
-		| FuncDecl SEMICOLON		 			
+		| StructDef
 			{
 				if (!errorFlag) {
 					$$ = $1;
@@ -173,10 +174,19 @@ LVal: ID
 				astNodes.push_back($$);
 			}
 		}
-   	| SINGLE_AND Exp %prec DEREF
+
+	| Exp DOT ID
 		{
 			if (!errorFlag) {
-			 	$$ = new UnaryExpNode('&', (ExpNode*)$2);
+				$$ = new StructItemNode((ExpNode*)$1, $3, false); 
+				$$->setLoc((Loc*)&(@$));
+				astNodes.push_back($$);
+			}
+		}
+	| Exp ARROW ID
+		{
+			if (!errorFlag) {
+				$$ = new StructItemNode((ExpNode*)$1, $3, true); 
 				$$->setLoc((Loc*)&(@$));
 				astNodes.push_back($$);
 			}
@@ -215,7 +225,7 @@ Exp: LVal
 			}
 		}
 
-   | FunCall %prec FUNCALL
+   | FunCall 
    		{
 			if (!errorFlag) {
 				$$ = $1;
@@ -229,24 +239,6 @@ Exp: LVal
 				$$->setLoc((Loc*)&(@$));
 			}
 		}
-   | LPARENT Exp %prec MISSING_RPARENT		
-   		{
-			lparent_num--;
-   			msgFactory.newError(e_rparent, @2.last_line, @2.last_column);
-			if (!errorFlag) {
-				errorFlag = true;
-				clearAstNodes();	
-			}
-   		}
-   | Exp ERR_RPARENT 	
-   		{
-			lparent_num++;
-   			msgFactory.newError(e_lparent, @1.first_line, @1.first_column);
-			if (!errorFlag) {
-				errorFlag = true;
-				clearAstNodes();	
-			}
-   		}
 
    | Exp PLUS Exp 		
    		{
@@ -289,16 +281,6 @@ Exp: LVal
 			}
 		}
 
-   | Exp error  Exp 	
-   		{
-   			yyerrok; 
-   			msgFactory.newError(e_miss_op, @2.first_line, @2.last_column - 1);
-			if (!errorFlag) {
-				errorFlag = true;
-				clearAstNodes();
-			}
-		}
-
    | PLUS Exp %prec POS 
    		{
 			if (!errorFlag) {
@@ -311,6 +293,14 @@ Exp: LVal
    		{
 			if (!errorFlag) {
 			 	$$ = new UnaryExpNode('-', (ExpNode*)$2);
+				$$->setLoc((Loc*)&(@$));
+				astNodes.push_back($$);
+			}
+		}
+   | SINGLE_AND Exp %prec DEREF
+		{
+			if (!errorFlag) {
+			 	$$ = new UnaryExpNode('&', (ExpNode*)$2);
 				$$->setLoc((Loc*)&(@$));
 				astNodes.push_back($$);
 			}
@@ -351,42 +341,46 @@ Type: INTTYPE
 		{
 			$$.type = VOID_TYPE;
 		}
+	| STRUCT ID
+		{
+			if (!errorFlag) {
+				$$.type = STRUCT_TYPE;
+				$$.structName = $2;
+			}
+			else {
+				delete $2;
+			}
+		}
 	;
 
 
-ExternDecl: EXTERN FuncDecl SEMICOLON
-	   		{
-				if (!errorFlag) {
-					$$ = $2;
-					$$->setLoc((Loc*)&(@$));
-					$$->valueTy.isExtern = true;
-				}
-			}
-		| EXTERN Decl
+ExternDecl: EXTERN Decl
 			{
 				if (!errorFlag) {
+					std::list<Node *> &nodes = ((VarDeclNode*)$2)->defList->nodes;
+					for (std::list<Node*>::iterator it = nodes.begin();
+							it != nodes.end(); it++)  {
+						(*it)->valueTy.isExtern = true;
+					}
+
 					$$ = $2;
 					$$->setLoc((Loc*)&(@$));
-					$$->valueTy.isExtern = true;
 				}
 			}
 	   ;
 
 
-StaticDecl: STATIC FuncDecl SEMICOLON
+StaticDecl: STATIC Decl
 		  	{
 				if (!errorFlag) {
+					std::list<Node *> &nodes = ((VarDeclNode*)$2)->defList->nodes;
+					for (std::list<Node*>::iterator it = nodes.begin();
+							it != nodes.end(); it++)  {
+						(*it)->valueTy.isStatic = true;
+					}
+
 					$$ = $2;
 					$$->setLoc((Loc*)&(@$));
-					$$->valueTy.isStatic = true;
-				}
-			}
-		  | STATIC Decl
-		  	{
-				if (!errorFlag) {
-					$$ = $2;
-					$$->setLoc((Loc*)&(@$));
-					$$->valueTy.isStatic = true;
 				}
 			}
 		  ;
@@ -429,13 +423,13 @@ VarDecl: Type VarList SEMICOLON
 				if (!errorFlag) {
 					for (std::list<Node*>::iterator it = ($2)->nodes.begin();
 							it != ($2)->nodes.end(); it++) {
-						dynamic_cast<VarDefNode*>(*it)->isConstant = false;
 						setAtomType(&((*it)->valueTy), $1);
 						printType((*it)->valueTy);
 						printf("\n");
 					}
 				
 					$$ = new VarDeclNode($2);
+					$$->valueTy = $1;
 					$$->setLoc((Loc*)&(@$));
 					astNodes.push_back($$);
 				}	
@@ -466,15 +460,21 @@ VarDef: Var
 			if (!errorFlag) {
 				if ($1.vType.type == ARRAY_TYPE) {
 					$$ = new ArrayVarDefNode($1.name, NULL, NULL);
-					$$->setLoc((Loc*)&(@$));
 					$$->valueTy = $1.vType;
+					$$->setLoc((Loc*)&(@$));
 					astNodes.push_back($$);
 
 				}
+				else if ($1.vType.type == FUNC_TYPE) {
+					$$ = new FuncDeclNode($1.name, $1.vType.argv);
+					$$->valueTy = $1.vType;
+					$$->setLoc((Loc*)&(@$));
+					astNodes.push_back($$);
+				}
 				else {
 					$$ = new IdVarDefNode($1.name, NULL);
-					$$->setLoc((Loc*)&(@$));
 					$$->valueTy = $1.vType;
+					$$->setLoc((Loc*)&(@$));
 					astNodes.push_back($$);
 
 				}
@@ -490,7 +490,13 @@ VarDef: Var
 AssignedVar: Var ASIGN Exp
 		   	{
 				if (!errorFlag) {
-					$$ = new IdVarDefNode($1.name, (ExpNode*)$3);
+					if ($1.vType.type == FUNC_TYPE) {
+						$$ = new FuncDeclNode($1.name, $1.vType.argv);
+						$$->valueTy = $1.vType;
+					}
+					else
+						$$ = new IdVarDefNode($1.name, (ExpNode*)$3);
+
 					$$->setLoc((Loc*)&(@$));
 					$$->valueTy = $1.vType;
 					astNodes.push_back($$);
@@ -519,6 +525,7 @@ Var: ID
 							false, 			// isStatic
 							0, 				// dim
 							NULL, 			// bases
+							NULL, 			// argv
 							NULL, 			// structName
 							NULL}; 			// atom
 			}
@@ -539,6 +546,7 @@ Var: ID
 							false, 				// isStatic
 							0,  				// dim
 							NULL, 				// bases
+							NULL, 				// argv
 							NULL, 				// structName
 							NULL}; 				// atom
 				insertType(&($$.vType), thisTy);
@@ -557,6 +565,45 @@ Var: ID
 							false, 				// isStatic
 							$2->nodes.size(), 	// dim
 							(NodeList*)$2, 		// bases   
+							NULL, 				// argv
+							NULL, 				// structName
+							NULL};				// atom
+				insertType(&($$.vType), thisTy);
+			}
+		}
+
+	| Var LPARENT RPARENT  
+	   	{
+			if (!errorFlag) {
+				$$ = $1;
+				ValueTypeS *thisTy = new ValueTypeS;
+				*thisTy = (ValueTypeS){FUNC_TYPE,  		// type
+							NO_TYPE, 		// dstType
+							false, 				// isConstant
+							false, 				// isExtern
+							false, 				// isStatic
+							0, 				 	// dim
+							NULL, 		 		// bases   
+							NULL, 				// argv
+							NULL, 				// structName
+							NULL};				// atom
+				insertType(&($$.vType), thisTy);
+			}
+		}
+
+	| Var LPARENT ArgNameList RPARENT 
+		{
+			if (!errorFlag) {
+				$$ = $1;
+				ValueTypeS *thisTy = new ValueTypeS;
+				*thisTy = (ValueTypeS){FUNC_TYPE,  		// type
+							NO_TYPE, 		// dstType
+							false, 				// isConstant
+							false, 				// isExtern
+							false, 				// isStatic
+							0, 				 	// dim
+							NULL, 		 		// bases   
+							$3, 				// argv
 							NULL, 				// structName
 							NULL};				// atom
 				insertType(&($$.vType), thisTy);
@@ -599,66 +646,63 @@ ArraySuffix: LBRACKET Exp RBRACKET
 		   ;
 
 
-ArgNameList: Type ID 
+ArgNameList: Type Var 
 	  	{
 			if (!errorFlag) {
-				$$ = new NodeList(new IdNode($2));
+				IdNode *node = new IdNode($2.name);
+				node->valueTy = $2.vType;
+				setAtomType(&(node->valueTy), $1);
+				$$ = new NodeList(new IdNode($2.name));
 				$$->setLoc((Loc*)&(@$));
 				astNodes.push_back($$);
 			}
-			else {
-				delete $2;
-			}
 		}
-	  | ArgNameList COMMA Type ID 
+	  | ArgNameList COMMA Type Var 
 	  	{
 			if (!errorFlag) {
-				$1->append(new IdNode($4));
+				IdNode *node = new IdNode($4.name);
+				node->valueTy = $4.vType;
+				setAtomType(&(node->valueTy), $3);
+				$1->append(node);
 				$$ = $1;
 				$$->setLoc((Loc*)&(@$));
-			}
-			else {
-				delete $4;
 			}
 		}
 	  ;
 
-FuncDecl: Type ID LPARENT RPARENT 
-			{
-				if (!errorFlag) {
-					$$ = new FuncDeclNode($2, NULL);
-					$$->valueTy = $1;
-					$$->setLoc((Loc*)&(@$));
-					astNodes.push_back($$);
-				}
-				else {
-					delete $2;
-				}
-			}
-		| Type ID LPARENT ArgNameList RPARENT 
-			{
-				if (!errorFlag) {
-					$$ = new FuncDeclNode($2, (NodeList*)$4);
-					$$->valueTy = $1;
-					$$->setLoc((Loc*)&(@$));
-					astNodes.push_back($$);
-				}
-				else {
-					delete $2;
-				}
-			}
-		;
 
-
-FuncDef: FuncDecl Block 	
+FuncDef: Type Var Block 	
 	   		{
 				if (!errorFlag) {
-					$$ = new FuncDefNode((FuncDeclNode*)$1, (BlockNode*)$2);
+					if ($2.vType.type != FUNC_TYPE) {
+						errorFlag = true;
+						yyerror("nodt func type\n");
+					}
+
+					FuncDeclNode *decl = new FuncDeclNode($2.name, $2.vType.argv);
+					decl->valueTy = $2.vType;
+					setAtomType(&(decl->valueTy), $1);
+
+					$$ = new FuncDefNode(decl, (BlockNode*)$3);
 					$$->setLoc((Loc*)&(@$));
 					astNodes.push_back($$);
 				}
 			}
 		;
+
+
+StructDef: STRUCT ID Block SEMICOLON
+		 	{
+				if (!errorFlag) {
+					$$ = new StructDefNode($2, ((BlockNode*)$3)->blockItems);
+					$$->setLoc((Loc*)&(@$));
+					astNodes.push_back($$);
+				}
+				else {
+					delete $2;
+				}
+			}
+		 ;
 
 
 FunCall: ID LPARENT RPARENT
@@ -954,6 +998,7 @@ static void setAtomType(ValueTypeS *pType, ValueTypeS atomTy)
 	while (pType->type != ATOM_TYPE)
 		pType = pType->atom;
 	pType->type = atomTy.type;
+	pType->structName = atomTy.structName;
 }
 
 static void printType(ValueTypeS vType)
@@ -977,6 +1022,24 @@ static void printType(ValueTypeS vType)
 		printf("array( ");
 		printType(*(vType.atom));
 		printf(" )");
+		return;
+	case STRUCT_TYPE:
+		printf("struct %s", vType.structName->c_str());
+		return;
+	case FUNC_TYPE:
+		printf("( ");
+		if (vType.argv != NULL) {
+			for (std::list<Node *>::iterator it = vType.argv->nodes.begin();
+					it != vType.argv->nodes.end(); it++) {
+				printType((*it)->valueTy);
+				printf(", ");
+			}
+		}	
+		printf(" ) -> ");
+		printType(*(vType.atom));
+		return;
+	case VOID_TYPE:
+		printf("void");
 		return;
 	default:
 		return;

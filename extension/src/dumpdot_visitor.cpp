@@ -105,12 +105,13 @@ void DumpDotVisitor::visitArrayItemNode(ArrayItemNode *node)
 {
 	int nThis = dumper->newNode(4, " ", "\\[", " ", "\\]");
 
-	int length = node->index->nodes.size();
-	dumpList(length, nThis, 2);
+	int nIndex = pending.back();
+	pending.pop_back();
 	int nArray = pending.back();
 	pending.pop_back();
 
 	dumper->drawLine(nThis, 0, nArray);
+	dumper->drawLine(nThis, 2, nIndex);
 
 	pending.insert(pending.end(), nThis);
 }
@@ -165,20 +166,9 @@ void DumpDotVisitor::visitArrayVarDefNode(ArrayVarDefNode *node)
 
 		int length = node->values->nodes.size();
 		dumpList(length, nThis, 6);
-
-		if (node->hasSize) {
-			int nSize = pending.back();
-			pending.pop_back();
-			dumper->drawLine(nThis, 2, nSize);
-		}
 	}
 	else {
 		nThis = dumper->newNode(4, node->name->c_str(), "\\[", " ", "\\]");
-		if (node->hasSize) {
-			int nSize = pending.back();
-			pending.pop_back();
-			dumper->drawLine(nThis, 2, nSize);
-		}
 	}
 	pending.insert(pending.end(), nThis);
 }

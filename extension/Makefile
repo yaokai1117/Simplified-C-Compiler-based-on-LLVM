@@ -10,7 +10,7 @@ LLVM_CXX_FLAG=`llvm-config --cxxflags|sed 's/-fno-rtti//'`
 
 all: bin/compiler bin/libexternfunc.so
 
-bin/compiler: bin/lexer.o bin/parser.o bin/main.o bin/util.o bin/global.o bin/msgfactory.o bin/dumpdot.o bin/node.o bin/dumpdot_visitor.o bin/codegen_visitor.o
+bin/compiler: bin/lexer.o bin/parser.o bin/main.o bin/util.o bin/global.o bin/msgfactory.o bin/dumpdot.o bin/node.o bin/dumpdot_visitor.o bin/codegen_visitor.o bin/check_visitor.o
 	@mkdir -p bin
 	$(CC) -o $@ $^ $(LLVM_LINK_FLAG) 
 
@@ -48,6 +48,10 @@ bin/dumpdot.o: src/dumpdot.cpp include/dumpdot.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 bin/dumpdot_visitor.o: src/dumpdot_visitor.cpp include/dumpdot_visitor.h include/node.h include/dumpdot.h include/visitor.h
+	@mkdir -p bin
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+bin/check_visitor.o: src/check_visitor.cpp include/check_visitor.h include/node.h
 	@mkdir -p bin
 	$(CC) $(CFLAGS) -c -o $@ $<
 

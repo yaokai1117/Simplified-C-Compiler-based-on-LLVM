@@ -24,7 +24,6 @@ void clearAstNodes();
 
 static void insertType(ValueTypeS *pType, ValueTypeS *thisTy);
 static void setAtomType(ValueTypeS *pType, ValueTypeS atomTy);
-static void printType(ValueTypeS vType);
 
 %}
 
@@ -84,7 +83,7 @@ static void printType(ValueTypeS vType);
 %type <cval> CHAR
 %type <name> ID
 %type <node> CompUnit CompUnitItem FuncDef FunCall LVal Exp 
-%type <node> Decl ExternDecl ConstDecl StaticDecl VarDecl VarDef AssignedVar StructDef
+%type <node> ExternDecl StaticDecl VarDecl VarDef AssignedVar StructDef
 %type <node> Block BlockItem Stmt Cond 
 %type <nodeList> ExpList VarList BlockItemList ArgNameList ArraySuffix
 %type <vType> Type
@@ -113,7 +112,7 @@ CompUnit: CompUnitItem
 			}
 		;
 
-CompUnitItem: Decl 				
+CompUnitItem: VarDecl 				
 			{
 				if (!errorFlag) {
 					$$ = $1;
@@ -158,10 +157,10 @@ LVal: ID
 				delete $1;
 			}
 		}
-	| Exp ArraySuffix %prec NO_BRACKET
+	| Exp LBRACKET Exp RBRACKET
 		{
 			if (!errorFlag) {
-				$$ = new ArrayItemNode((ExpNode*)$1, (NodeList*)$2);
+				$$ = new ArrayItemNode((ExpNode*)$1, (ExpNode*)$3);
 				$$->setLoc((Loc*)&(@$));
 				astNodes.push_back($$);
 			}
@@ -351,10 +350,15 @@ Type: INTTYPE
 				delete $2;
 			}
 		}
+	| CONST Type
+		{
+			$2.isConstant = true;
+			$$ = $2;
+		}
 	;
 
 
-ExternDecl: EXTERN Decl
+ExternDecl: EXTERN VarDecl
 			{
 				if (!errorFlag) {
 					std::list<Node *> &nodes = ((VarDeclNode*)$2)->defList->nodes;
@@ -370,7 +374,7 @@ ExternDecl: EXTERN Decl
 	   ;
 
 
-StaticDecl: STATIC Decl
+StaticDecl: STATIC VarDecl
 		  	{
 				if (!errorFlag) {
 					std::list<Node *> &nodes = ((VarDeclNode*)$2)->defList->nodes;
@@ -386,45 +390,12 @@ StaticDecl: STATIC Decl
 		  ;
 
 
-Decl: ConstDecl 		
-		{
-			if (!errorFlag) {
-				$$ = $1;
-			}
-		}
-	| VarDecl 			
-		{
-			if (!errorFlag) {
-				$$ = $1;
-			}
-		}
-	;
-
-
-ConstDecl: CONST VarDecl
-		 	{
-				if (!errorFlag) {
-					std::list<Node *> &nodes = ((VarDeclNode*)$2)->defList->nodes;
-					for (std::list<Node*>::iterator it = nodes.begin();
-							it != nodes.end(); it++)  {
-						dynamic_cast<VarDefNode*>(*it)->isConstant = true;
-						(*it)->valueTy.isConstant = true;
-					}
-
-					$$ = $2;
-					$$->setLoc((Loc*)&(@$));
-				}
-			}
-		 ;
-
-
 VarDecl: Type VarList SEMICOLON 
 	   		{
 				if (!errorFlag) {
 					for (std::list<Node*>::iterator it = ($2)->nodes.begin();
 							it != ($2)->nodes.end(); it++) {
 						setAtomType(&((*it)->valueTy), $1);
-						printType((*it)->valueTy);
 						printf("\n");
 					}
 				
@@ -459,8 +430,9 @@ VarDef: Var
 	  	{
 			if (!errorFlag) {
 				if ($1.vType.type == ARRAY_TYPE) {
-					$$ = new ArrayVarDefNode($1.name, NULL, NULL);
+					$$ = new ArrayVarDefNode($1.name, NULL);
 					$$->valueTy = $1.vType;
+					$$->valueTy.dim = $$->valueTy.argv->nodes.size();
 					$$->setLoc((Loc*)&(@$));
 					astNodes.push_back($$);
 
@@ -490,24 +462,23 @@ VarDef: Var
 AssignedVar: Var ASIGN Exp
 		   	{
 				if (!errorFlag) {
-					if ($1.vType.type == FUNC_TYPE) {
+					if ($1.vType.type == FUNC_TYPE) 
 						$$ = new FuncDeclNode($1.name, $1.vType.argv);
-						$$->valueTy = $1.vType;
-					}
 					else
 						$$ = new IdVarDefNode($1.name, (ExpNode*)$3);
 
-					$$->setLoc((Loc*)&(@$));
 					$$->valueTy = $1.vType;
+					$$->setLoc((Loc*)&(@$));
 					astNodes.push_back($$);
 				}
 			}
 		   | Var ASIGN LBRACE ExpList RBRACE
 			{
 				if (!errorFlag) {
-					$$ = new ArrayVarDefNode($1.name, NULL, $4);
-					$$->setLoc((Loc*)&(@$));
+					$$ = new ArrayVarDefNode($1.name, $4);
 					$$->valueTy = $1.vType;
+					$$->valueTy.dim = $$->valueTy.argv->nodes.size();
+					$$->setLoc((Loc*)&(@$));
 					astNodes.push_back($$);
 				}
 			}
@@ -527,7 +498,9 @@ Var: ID
 							NULL, 			// bases
 							NULL, 			// argv
 							NULL, 			// structName
-							NULL}; 			// atom
+							NULL, 			// atom
+							false, 			// isComputed
+							0}; 			// constVal
 			}
 			else {
 				delete $1;
@@ -548,7 +521,9 @@ Var: ID
 							NULL, 				// bases
 							NULL, 				// argv
 							NULL, 				// structName
-							NULL}; 				// atom
+							NULL, 				// atom
+							false, 			// isComputed
+							0}; 			// constVal
 				insertType(&($$.vType), thisTy);
 			}
 		}
@@ -564,10 +539,12 @@ Var: ID
 							false, 				// isExtern
 							false, 				// isStatic
 							$2->nodes.size(), 	// dim
-							(NodeList*)$2, 		// bases   
-							NULL, 				// argv
+							NULL, 				// bases
+							(NodeList*)$2, 		// argv   
 							NULL, 				// structName
-							NULL};				// atom
+							NULL,				// atom
+							false, 			// isComputed
+							0}; 			// constVal
 				insertType(&($$.vType), thisTy);
 			}
 		}
@@ -586,7 +563,10 @@ Var: ID
 							NULL, 		 		// bases   
 							NULL, 				// argv
 							NULL, 				// structName
-							NULL};				// atom
+							NULL,				// atom
+							false, 			// isComputed
+							0}; 			// constVal
+
 				insertType(&($$.vType), thisTy);
 			}
 		}
@@ -605,7 +585,9 @@ Var: ID
 							NULL, 		 		// bases   
 							$3, 				// argv
 							NULL, 				// structName
-							NULL};				// atom
+							NULL,				// atom
+							false, 			// isComputed
+							0}; 			// constVal
 				insertType(&($$.vType), thisTy);
 			}
 		}
@@ -652,7 +634,7 @@ ArgNameList: Type Var
 				IdNode *node = new IdNode($2.name);
 				node->valueTy = $2.vType;
 				setAtomType(&(node->valueTy), $1);
-				$$ = new NodeList(new IdNode($2.name));
+				$$ = new NodeList(node);
 				$$->setLoc((Loc*)&(@$));
 				astNodes.push_back($$);
 			}
@@ -758,7 +740,7 @@ BlockItemList: BlockItem
 				}
 			 ;
 
-BlockItem: Decl 		
+BlockItem: VarDecl 		
 		 	{
 				if (!errorFlag) {
 					$$ = $1;
@@ -775,7 +757,7 @@ BlockItem: Decl
 Stmt: LVal ASIGN Exp SEMICOLON 
 		{
 			if (!errorFlag) {
-				$$ = new AssignStmtNode((LValNode*)$1, (ExpNode*)$3);
+				$$ = new AssignStmtNode((ExpNode*)$1, (ExpNode*)$3);
 				$$->setLoc((Loc*)&(@$));
 				astNodes.push_back($$);
 			}
@@ -997,53 +979,8 @@ static void setAtomType(ValueTypeS *pType, ValueTypeS atomTy)
 {
 	while (pType->type != ATOM_TYPE)
 		pType = pType->atom;
-	pType->type = atomTy.type;
-	pType->structName = atomTy.structName;
+	*pType = atomTy;
 }
 
-static void printType(ValueTypeS vType)
-{
-	switch (vType.type) {
-	case INT_TYPE:
-		printf("int");
-		return;
-	case FLOAT_TYPE:
-		printf("float");
-		return;
-	case CHAR_TYPE:
-		printf("char");
-		return;
-	case PTR_TYPE:
-		printf("pointer( ");
-		printType(*(vType.atom));
-		printf(" )");
-		return;
-	case ARRAY_TYPE:
-		printf("array( ");
-		printType(*(vType.atom));
-		printf(" )");
-		return;
-	case STRUCT_TYPE:
-		printf("struct %s", vType.structName->c_str());
-		return;
-	case FUNC_TYPE:
-		printf("( ");
-		if (vType.argv != NULL) {
-			for (std::list<Node *>::iterator it = vType.argv->nodes.begin();
-					it != vType.argv->nodes.end(); it++) {
-				printType((*it)->valueTy);
-				printf(", ");
-			}
-		}	
-		printf(" ) -> ");
-		printType(*(vType.atom));
-		return;
-	case VOID_TYPE:
-		printf("void");
-		return;
-	default:
-		return;
-	}
-}
 
 

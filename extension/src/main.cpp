@@ -7,6 +7,7 @@
 #include "global.h"
 #include "dumpdot_visitor.h"
 #include "codegen_visitor.h"
+#include "check_visitor.h"
 
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/IRBuilder.h"
@@ -46,6 +47,10 @@ int main(int argc, char** argv)
     yyin = infp;        // infp is initialized in handle_opt()
     yyparse();
 
+    if (!errorFlag) {
+    	CheckVisitor checkVisitor;
+    	root->accept(checkVisitor);
+    }
 
     if (dumpfp != NULL && !errorFlag) {
         DumpDotVisitor dumpVisitor(dumpfp);

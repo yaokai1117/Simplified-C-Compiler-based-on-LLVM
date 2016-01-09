@@ -81,6 +81,11 @@ typedef enum {
 	NO_TYPE
 } ValueType;
 
+typedef union {
+	int ival;
+	double fval;
+	char cval;
+} ConstVal;
 
 typedef struct ValueTypeStuct{
 	ValueType type;
@@ -89,19 +94,13 @@ typedef struct ValueTypeStuct{
 	bool isExtern;
 	bool isStatic;
 	int dim;
-	NodeList *base;
+	int *base;
 	NodeList *argv;
 	std::string *structName;
 	struct ValueTypeStuct *atom;
+	bool isComputed;
+	ConstVal constVal;
 } ValueTypeS;
-
-
-typedef union {
-	int ival;
-	double fval;
-	char cval;
-} ConstVal;
-
 
 
 class Node {
@@ -112,7 +111,6 @@ public:
 	virtual void accept(Visitor &visitor) = 0;
 
 	ValueTypeS valueTy;
-	ConstVal constVal;
     NodeType type;
     Loc* loc;
 };
@@ -187,13 +185,8 @@ public:
 };
 
 
-class LValNode : public ExpNode {
-public:
-	virtual void accept(Visitor &visitor) = 0;
-};
 
-
-class IdNode : public LValNode {
+class IdNode : public ExpNode {
 public:
     IdNode(std::string* name);
 	~IdNode();
@@ -203,18 +196,18 @@ public:
 };
 
 
-class ArrayItemNode : public LValNode {
+class ArrayItemNode : public ExpNode {
 public:
-	ArrayItemNode(ExpNode *array, NodeList *index);
+	ArrayItemNode(ExpNode *array, ExpNode *index);
 	~ArrayItemNode();
 	virtual void accept(Visitor &visitor);
 
 	ExpNode *array;
-	NodeList *index;
+	ExpNode *index;
 };
 
 
-class StructItemNode : public LValNode {
+class StructItemNode : public ExpNode {
 public:
 	StructItemNode(ExpNode *stru, std::string *itemName, bool isPointer);
 	~StructItemNode();
@@ -242,7 +235,6 @@ class VarDefNode : public Node {
 public:
 	virtual void accept(Visitor &visitor) = 0;
 
-	bool isConstant;
 	bool isAssigned;
 	std::string *name;
 };
@@ -260,12 +252,10 @@ public:
 
 class ArrayVarDefNode : public VarDefNode {
 public:
-	ArrayVarDefNode(std::string *name, ExpNode *size, NodeList *values);
+	ArrayVarDefNode(std::string *name, NodeList *values);
 	~ArrayVarDefNode();
 	virtual void accept(Visitor &visitor);
 
-	bool hasSize;
-	ExpNode *size;
 	NodeList *values;
 };
 
@@ -319,11 +309,11 @@ public:
 
 class AssignStmtNode : public StmtNode {
 public:
-	AssignStmtNode(LValNode *lval, ExpNode *exp);
+	AssignStmtNode(ExpNode *lval, ExpNode *exp);
 	~AssignStmtNode();
 	virtual void accept(Visitor &visitor);
 	
-	LValNode *lval;
+	ExpNode *lval;
 	ExpNode *exp;
 };
 

@@ -1,16 +1,9 @@
 
-int *a(int b, int*c)[3];
+const int size = 4;
+int a[size];
 
-struct testS {
-	int num;
-	float fnum;
-	struct testS *next;
-};
-
-int main(int a)
+int main()
 {
-	int a;
-	b(2);
-	*a = b;
-	struct testS d;
+	int a = 3.4;
+	float c[size];
 }

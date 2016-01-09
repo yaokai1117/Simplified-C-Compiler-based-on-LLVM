@@ -12,6 +12,8 @@ enum MsgType {
 	// warnings
 	w_miss_int,
 	
+	w_type_cast,
+
 	// errors
 	e_rparent,
 	e_lparent,
@@ -26,7 +28,9 @@ enum MsgType {
 	e_redefinition_of_identifier,
 	e_assign_to_constant,
 	e_argument_unmatch,
-	e_array_size_not_constant
+	e_array_size_not_constant,
+	e_type_unmatch,
+	e_float_mod
 };
 
 // base class of compiling message

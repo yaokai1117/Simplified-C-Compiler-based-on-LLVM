@@ -48,10 +48,11 @@ public:
 private:
 	std::vector<ValueTypeS> pending;
 
-	std::vector< std::map<std::string, ValueTypeS> > symTableStack;
+	std::map<std::string, ValueTypeS> *symTableStack[32];
 	std::map<std::string, ValueTypeS> globalSymTabble;
 	int stackPtr;
 
+	bool isGlobal;
 	ValueTypeS lookUpSym(std::string name);
 	void handleArrayType(ValueTypeS *vType);
 };

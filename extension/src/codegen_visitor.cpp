@@ -256,7 +256,7 @@ void CodegenVisitor::visitIdVarDefNode(IdVarDefNode *node)
 	if (Builder.GetInsertBlock() == nullptr) {
 		GlobalVariable *gVar = new GlobalVariable(*TheModule, /* module */
 				Type::getInt32Ty(getGlobalContext()), /* type */
-				node->isConstant, 	/* is constant ? */
+				node->valueTy.isConstant, 	/* is constant ? */
 				GlobalValue::ExternalLinkage, /* linkage */
 				0,	/* initializer */
 				name->c_str() /* name */);
@@ -297,7 +297,7 @@ void CodegenVisitor::visitIdVarDefNode(IdVarDefNode *node)
 			Builder.CreateStore(val, variable);
 		}
 
-		if (node->isConstant) {
+		if (node->valueTy.isConstant) {
 			std::map<std::string, AllocaInst *> &ConstLocalVariables = *ConstLocalTableStack[StackPtr-1];
 			ConstLocalVariables[*name] = variable;
 		}
@@ -321,17 +321,7 @@ void CodegenVisitor::visitArrayVarDefNode(ArrayVarDefNode *node)
 		valuesSize = 0;
 
 	// get the size of array
-	int arraySize = 0;
-	if (node->hasSize) {
-		Value *sizeV = pending[pending.size() - valuesSize - 1];
-
-		if (sizeV == 0)
-			return;
-
-		arraySize = (int)*((ConstantInt *)sizeV)->getValue().getRawData();
-	}
-	else
-		arraySize = valuesSize;
+	int arraySize = arraySize = valuesSize;
 
 
 	ArrayType* arrayType = ArrayType::get(IntegerType::get(TheModule->getContext(), 32), arraySize);
@@ -342,7 +332,7 @@ void CodegenVisitor::visitArrayVarDefNode(ArrayVarDefNode *node)
 		// insert global variable
 		GlobalVariable *gVar = new GlobalVariable(*TheModule, /* module */
 						arrayType, 		/* type */
-						node->isConstant, 	/* is constant ? */
+						node->valueTy.isConstant, 	/* is constant ? */
 						GlobalValue::ExternalLinkage, /* linkage */
 						0,	/* initializer */
 						name->c_str() /* name */);
@@ -396,7 +386,7 @@ void CodegenVisitor::visitArrayVarDefNode(ArrayVarDefNode *node)
 			}
 		}
 
-		if (node->isConstant) {
+		if (node->valueTy.isConstant) {
 			std::map<std::string, AllocaInst *> &ConstLocalVariables = *ConstLocalTableStack[StackPtr-1];
 			ConstLocalVariables[*name] = arrayPtr;
 		}
@@ -405,8 +395,6 @@ void CodegenVisitor::visitArrayVarDefNode(ArrayVarDefNode *node)
 			LocalVariables[*name] = arrayPtr;
 		}
 	}
-	if (node->hasSize)
-		pending.pop_back();		// pop sizeV
 }
 
 

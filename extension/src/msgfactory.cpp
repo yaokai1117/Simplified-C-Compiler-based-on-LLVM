@@ -12,6 +12,8 @@ map<int, string> createMsgTable()
 	// warnings
 	t[w_miss_int] = string("a type specifier 'int' is required for declarations");
 
+	t[w_type_cast] = string("type cast");
+
 	// errors
 	t[e_rparent] = string("expected ')'");
 	t[e_lparent] = string("expected '('");
@@ -27,6 +29,8 @@ map<int, string> createMsgTable()
 	t[e_assign_to_constant] = string("assignment to a constant is illegal");
 	t[e_argument_unmatch] = string("function argument unmatch");
 	t[e_array_size_not_constant] = string("the size of array should be constant");
+	t[e_type_unmatch] = string("unmatched type");
+	t[e_float_mod] = string("the operand of '%' can only be integers");
 	return t;
 }
 

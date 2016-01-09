@@ -164,7 +164,7 @@ void IdNode::accept(Visitor &v)
 
 
 // implementation of class ArrayItemNode
-ArrayItemNode::ArrayItemNode(ExpNode *array, NodeList *index)
+ArrayItemNode::ArrayItemNode(ExpNode *array, ExpNode *index)
 	: array(array), index(index)
 {
 	type = ARRAY_ITEM_AST;
@@ -245,12 +245,11 @@ void IdVarDefNode::accept(Visitor &v)
 
 
 // implementation of class ArrayVarDefNode
-ArrayVarDefNode::ArrayVarDefNode(std::string *name, ExpNode *size, NodeList *values=NULL)
-	: size(size), values(values)
+ArrayVarDefNode::ArrayVarDefNode(std::string *name, NodeList *values=NULL)
+	: values(values)
 {
 	type = ARRAY_VAR_DEF_AST;
 	isAssigned = (values != NULL);
-	hasSize = (size != NULL);
 
 	this->name = name;
 }
@@ -262,10 +261,6 @@ ArrayVarDefNode::~ArrayVarDefNode()
 
 void ArrayVarDefNode::accept(Visitor &v)
 {
-	if (hasSize) {
-		size->accept(v);
-	}
-
 	if (isAssigned) {
 		values->accept(v);
 	}
@@ -294,7 +289,7 @@ void BlockNode::accept(Visitor &v)
 
 
 // implementation of class AssignStmtNode
-AssignStmtNode::AssignStmtNode(LValNode *lval, ExpNode *exp)
+AssignStmtNode::AssignStmtNode(ExpNode *lval, ExpNode *exp)
 	: lval(lval), exp(exp)
 {
 	type = ASSIGN_STMT_AST;

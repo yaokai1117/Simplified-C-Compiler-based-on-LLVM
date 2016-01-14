@@ -37,6 +37,8 @@ static void printType(ValueTypeS vType)
 	case ARRAY_TYPE:
 		printf("array( ");
 		printType(*(vType.atom));
+		for (int i = 0; i < vType.dim; i++)
+			printf(" ,%d", vType.base[i]);
 		printf(" )");
 		return;
 	case STRUCT_TYPE:
@@ -71,7 +73,7 @@ static bool typeIsEqual(ValueTypeS *a, ValueTypeS *b)
 	if (a->type == ARRAY_TYPE) {
 		if (a->dim != b->dim)
 			return false;
-		for (int i = 0; i < a->dim; i++)
+		for (int i = 1; i < a->dim; i++)	// i count from 1
 			if (a->base[i] != b->base[i])
 				return false;
 		return typeIsEqual(a->atom, b->atom);
@@ -192,6 +194,7 @@ void CheckVisitor::handleArrayType(ValueTypeS *vType)
 				return;
 			}
 		}
+		vType->argv = NULL;
 		handleArrayType(vType->atom);
 		return;
 	case PTR_TYPE:
@@ -201,10 +204,12 @@ void CheckVisitor::handleArrayType(ValueTypeS *vType)
 		handleArrayType(vType->atom);
 		if (errorFlag)
 			return;
-		nodes = vType->argv->nodes;
-		for (list<Node*>::iterator it = nodes.begin();
-				it != nodes.end(); it++) {
-			handleArrayType(&(*it)->valueTy);
+		if (vType->argv != NULL) {
+			nodes = vType->argv->nodes;
+			for (list<Node*>::iterator it = nodes.begin();
+					it != nodes.end(); it++) {
+				handleArrayType(&(*it)->valueTy);
+			}
 		}
 		return;
 	default:
@@ -242,11 +247,13 @@ CheckVisitor::CheckVisitor()
 
 CheckVisitor::~CheckVisitor()
 {
+	// empty
 }
 
 
 void CheckVisitor::visitNodeList(NodeList *node)
 {
+	// empty
 }
 
 
@@ -453,7 +460,14 @@ void CheckVisitor::visitArrayItemNode(ArrayItemNode *node)
 	if (indexTy.isComputed && node->index->type != NUM_AST)
 		node->index = getSimpleNode(indexTy, node->index->loc);
 
-	vType = *(arrayTy.atom);
+	if (arrayTy.dim == 1)
+		vType = *(arrayTy.atom);
+	else {
+		vType = arrayTy;
+		vType.dim--;
+		for (int i = 0; i < vType.dim ; i++)
+			vType.base[i] = vType.base[i+1];
+	}
 
 	printType(vType);
 	printf("  : ArrayItem\n");
@@ -462,12 +476,70 @@ void CheckVisitor::visitArrayItemNode(ArrayItemNode *node)
 
 void CheckVisitor::visitStructItemNode(StructItemNode *node)
 {
+	if (errorFlag)
+		return;
+
+	ValueTypeS &vType = node->valueTy;
+	ValueTypeS struTy = node->stru->valueTy;
+
+	if (node->isPointer) {
+		struTy = *(struTy.atom);
+	}
+
+	if (struTy.type != STRUCT_TYPE) {
+		errorFlag = true;
+		msgFactory.newError(e_not_a_struct, node->loc->first_line, node->loc->first_column);
+		return;
+	}
+
+	map<string, ValueTypeS> &struAttrMap = *structTable[*struTy.structName];
+
+	vType = struAttrMap[*node->itemName];
+
+	printType(vType);
+	printf("  : StructItem\n");
 }
 
 
 
 void CheckVisitor::visitFunCallNode(FunCallNode *node)
 {
+	if (errorFlag)
+		return;
+
+	ValueTypeS &vType = node->valueTy;
+
+	ValueTypeS funcTy = node->func->valueTy;
+
+	if (node->hasArgs) {
+		std::list<Node *> nodes1 = node->argv->nodes;
+		std::list<Node *> nodes2 = funcTy.argv->nodes;
+		if (nodes1.size() != nodes2.size()) {
+			errorFlag = true;
+			msgFactory.newError(e_argument_unmatch, node->loc->first_line, node->loc->first_column);
+			return;
+		}
+		std::list<Node *>::iterator it1 = nodes1.begin(), it2 = nodes2.begin();
+		while (it1 != nodes1.end()) {
+			if (!typeIsEqual(&(*it1)->valueTy, &(*it2)->valueTy)) {		// oh... not good..
+				errorFlag = true;
+				msgFactory.newError(e_argument_unmatch, node->loc->first_line, node->loc->first_column);
+				return;
+			}
+			it1++;
+			it2++;
+		}
+	}
+	else {
+		if (funcTy.argv != NULL) {
+			errorFlag = true;
+			msgFactory.newError(e_argument_unmatch, node->loc->first_line, node->loc->first_column);
+			return;
+		}
+	}
+
+	printType(vType);
+	printf("  : FunCall\n");
 }
 
 
@@ -593,6 +665,7 @@ void CheckVisitor::visitArrayVarDefNode(ArrayVarDefNode *node)
 
 void CheckVisitor::visitEmptyNode(EmptyNode *node)
 {
+	// empty
 }
 
 
@@ -605,72 +678,140 @@ void CheckVisitor::visitBlockNode(BlockNode *node)
 
 void CheckVisitor::visitVarDeclNode(VarDeclNode *node)
 {
+	if (node->valueTy.type == STRUCT_TYPE) {
+		string nameStr = *(node->valueTy.structName);
+		if (structTable.find(nameStr) == structTable.end()) {
+			errorFlag = true;
+			msgFactory.newError(e_no_such_struct, node->loc->first_line, node->loc->first_column);
+			return;
+		}
+	}
 }
 
 
 void CheckVisitor::visitAssignStmtNode(AssignStmtNode *node)
 {
+	if (errorFlag)
+		return;
+
+	ValueTypeS &lvalTy = node->lval->valueTy;
+	ValueTypeS &expTy = node->exp->valueTy;
+
+	if (lvalTy.isConstant) {
+		errorFlag = true;
+		msgFactory.newError(e_assign_to_constant, node->loc->first_line, node->loc->first_column);
+		return;
+	}
+
+	if (!typeIsEqual(&lvalTy, &expTy)) {
+		errorFlag = true;
+		msgFactory.newError(e_type_unmatch, node->loc->first_line, node->loc->first_column);
+		return;
+	}
 }
 
 
 void CheckVisitor::visitFunCallStmtNode(FunCallStmtNode *node)
 {
+	// empty
 }
 
 
 void CheckVisitor::visitBlockStmtNode(BlockStmtNode *node)
 {
+	// empty
 }
 
 
 void CheckVisitor::visitCondNode(CondNode *node)
 {
+	// empty
 }
 
 
 void CheckVisitor::visitIfStmtNode(IfStmtNode *node)
 {
+	// empty
 }
 
 
 void CheckVisitor::visitWhileStmtNdoe(WhileStmtNode *node)
 {
+	// empty
 }
 
 
 void CheckVisitor::visitReturnStmtNdoe(ReturnStmtNode *node)
 {
+	// empty
 }
 
 
 void CheckVisitor::visitBreakStmtNode(BreakStmtNode *node)
 {
+	// empty
 }
 
 
 void CheckVisitor::visitContinueStmtNode(ContinueStmtNode *node)
 {
+	// empty
 }
 
 
 void CheckVisitor::visitFuncDeclNode(FuncDeclNode *node)
 {
+	if (errorFlag)
+		return;
+
+	ValueTypeS &vType = node->valueTy;
+
+	// handle array
+	handleArrayType(&vType);
+
+	if (globalSymTabble.find(*node->name) != globalSymTabble.end()) {
+		errorFlag = true;
+		msgFactory.newError(e_redefinition_of_function, node->loc->first_line, node->loc->first_column);
+		return;
+	}
+
+	if (node->hasArgs) {
+		std::list<Node *> nodes = vType.argv->nodes;
+		for (std::list<Node*>::iterator it = nodes.begin();
+				it != nodes.end(); it++) {
+			if ((*it)->valueTy.type == FUNC_TYPE) {
+				errorFlag = true;
+				msgFactory.newError(e_function_arg_cannot_be_functon, node->loc->first_line, node->loc->first_column);
+			}
+
+		}
+	}
+
+	globalSymTabble[*node->name] = vType;
+
+	printType(vType);
+	printf("  : FuncDef\n");
 }
 
 
 void CheckVisitor::visitFuncDefNode(FuncDefNode *node)
 {
 	isGlobal = true;
+	stackPtr--;
+	delete symTableStack[stackPtr];
 }
 
 
 void CheckVisitor::visitStructDefNode(StructDefNode *node)
 {
+	structTable[*node->name] = symTableStack[stackPtr-1];
+	stackPtr--;
 }
 
 
 void CheckVisitor::visitCompUnitNode(CompUnitNode *node)
 {
+	// empty
 }
 
 
@@ -683,22 +824,39 @@ void CheckVisitor::enterBlockNode(BlockNode *node)
 
 void CheckVisitor::enterIfStmtNode(IfStmtNode *node)
 {
+	// epmty
 }
 
 
 void CheckVisitor::enterWhileStmtNode(WhileStmtNode *node)
 {
+	// empty
 }
 
 
 void CheckVisitor::enterFuncDefNode(FuncDefNode *node)
 {
 	isGlobal = false;
+	symTableStack[stackPtr] = new map<string, ValueTypeS>;
+	stackPtr++;
+	map<string, ValueTypeS> &symTable = *symTableStack[stackPtr-1];
+
+	if (node->decl->hasArgs) {
+		std::list<Node *> nodes = node->decl->valueTy.argv->nodes;
+
+		for (std::list<Node *>::iterator it = nodes.begin();
+				it != nodes.end(); it++) {
+			std::string nameStr = *(dynamic_cast<IdNode*>(*it)->name);
+			symTable[nameStr] = (*it)->valueTy;
+		}
+	}
 }
 
 
 void CheckVisitor::enterStructDefNode(StructDefNode *node)
 {
+	symTableStack[stackPtr] = new map<string, ValueTypeS>;
+	stackPtr++;
 }
 
 

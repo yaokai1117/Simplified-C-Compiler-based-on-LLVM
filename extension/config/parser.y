@@ -438,7 +438,7 @@ VarDef: Var
 
 				}
 				else if ($1.vType.type == FUNC_TYPE) {
-					$$ = new FuncDeclNode($1.name, $1.vType.argv);
+					$$ = new FuncDeclNode($1.name, $1.vType.argv != NULL);
 					$$->valueTy = $1.vType;
 					$$->setLoc((Loc*)&(@$));
 					astNodes.push_back($$);
@@ -463,7 +463,7 @@ AssignedVar: Var ASIGN Exp
 		   	{
 				if (!errorFlag) {
 					if ($1.vType.type == FUNC_TYPE) 
-						$$ = new FuncDeclNode($1.name, $1.vType.argv);
+						$$ = new FuncDeclNode($1.name, $1.vType.argv == NULL);
 					else
 						$$ = new IdVarDefNode($1.name, (ExpNode*)$3);
 
@@ -661,7 +661,7 @@ FuncDef: Type Var Block
 						yyerror("nodt func type\n");
 					}
 
-					FuncDeclNode *decl = new FuncDeclNode($2.name, $2.vType.argv);
+					FuncDeclNode *decl = new FuncDeclNode($2.name, $2.vType.argv != NULL);
 					decl->valueTy = $2.vType;
 					setAtomType(&(decl->valueTy), $1);
 
@@ -687,10 +687,10 @@ StructDef: STRUCT ID Block SEMICOLON
 		 ;
 
 
-FunCall: ID LPARENT RPARENT
+FunCall: Exp LPARENT RPARENT
 	   	{
 			if (!errorFlag) {
-				$$ = new FunCallNode($1, NULL);
+				$$ = new FunCallNode((ExpNode*)$1, NULL);
 				$$->setLoc((Loc*)&(@$));
 				astNodes.push_back($$);
 			}
@@ -698,10 +698,10 @@ FunCall: ID LPARENT RPARENT
 				delete $1;
 			}
 		}
-	   | ID LPARENT ExpList RPARENT
+	   | Exp LPARENT ExpList RPARENT
 	   	{
 			if (!errorFlag) {
-				$$ = new FunCallNode($1, (NodeList*)$3);
+				$$ = new FunCallNode((ExpNode*)$1, (NodeList*)$3);
 				$$->setLoc((Loc*)&(@$));
 				astNodes.push_back($$);
 			}

@@ -51,6 +51,7 @@ private:
 	std::map<std::string, ValueTypeS> *symTableStack[32];
 	std::map<std::string, ValueTypeS> globalSymTabble;
 	int stackPtr;
+	std::map<std::string, std::map<std::string, ValueTypeS>* > structTable;
 
 	bool isGlobal;
 	ValueTypeS lookUpSym(std::string name);

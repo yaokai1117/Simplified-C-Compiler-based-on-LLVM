@@ -194,13 +194,14 @@ StructItemNode::~StructItemNode()
 }
 
 void StructItemNode::accept(Visitor &v){
-
+	stru->accept(v);
+	v.visitStructItemNode(this);
 }
 
 
 // implementation of class FunCallNode
-FunCallNode::FunCallNode(std::string *name, NodeList *argv)
-	: name(name), argv(argv)
+FunCallNode::FunCallNode(ExpNode *func, NodeList *argv)
+	: func(func), argv(argv)
 {
 	type = FUN_CALL_AST;
 	hasArgs = (argv != NULL);
@@ -208,11 +209,11 @@ FunCallNode::FunCallNode(std::string *name, NodeList *argv)
 
 FunCallNode::~FunCallNode()
 {
-	delete name;
 }
 
 void FunCallNode::accept(Visitor &v)
 {
+	func->accept(v);
 	if (hasArgs) {
 		argv->accept(v);
 	}
@@ -497,11 +498,10 @@ void ContinueStmtNode::accept(Visitor &v)
 
 
 // implemantatian of class FuncDeclNode
-FuncDeclNode::FuncDeclNode(string *name, NodeList *argv)
-	: name(name), argv(argv)
+FuncDeclNode::FuncDeclNode(string *name, bool hasArgs)
+	: name(name), hasArgs(hasArgs)
 {
 	type = FUNC_DECL_AST;
-	hasArgs = (argv != NULL);
 }
 
 FuncDeclNode::~FuncDeclNode()
@@ -517,9 +517,6 @@ void FuncDeclNode::accept(Visitor &v)
 		return;
 	}
 
-	if (hasArgs) {
-		argv->accept(v);
-	}
 	v.visitFuncDeclNode(this);
 }
 

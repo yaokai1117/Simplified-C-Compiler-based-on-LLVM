@@ -235,17 +235,17 @@ void CodegenVisitor::visitStructItemNode(StructItemNode *node)
 
 void CodegenVisitor::visitFunCallNode(FunCallNode *node)
 {
-	// Look up the name in the global module table.
-	Function *calleeF = TheModule->getFunction(*(node->name));
-
-	std::list<Node *> arguments;
-	if (node->hasArgs)
-		arguments = node->argv->nodes;
-
-	std::vector<Value *> argsV = getValuesFromStack(arguments.size());
-
-	Value *retV = Builder.CreateCall(calleeF, argsV);
-	pending.insert(pending.end(), retV);
+//	// Look up the name in the global module table.
+//	Function *calleeF = TheModule->getFunction(*(node->name));
+//
+//	std::list<Node *> arguments;
+//	if (node->hasArgs)
+//		arguments = node->argv->nodes;
+//
+//	std::vector<Value *> argsV = getValuesFromStack(arguments.size());
+//
+//	Value *retV = Builder.CreateCall(calleeF, argsV);
+//	pending.insert(pending.end(), retV);
 }
 
 
@@ -693,7 +693,7 @@ void CodegenVisitor::visitFuncDeclNode(FuncDeclNode *node)
 	std::string *name = node->name;
 	std::list<Node *> argNames;
 	if (node->hasArgs)
-		argNames = node->argv->nodes;
+		argNames = node->valueTy.argv->nodes;
 
 	std::vector<Type *> Ints(argNames.size(), Type::getInt32Ty(getGlobalContext()));
 	// debug

@@ -30,7 +30,10 @@ enum MsgType {
 	e_argument_unmatch,
 	e_array_size_not_constant,
 	e_type_unmatch,
-	e_float_mod
+	e_float_mod,
+	e_function_arg_cannot_be_functon,
+	e_not_a_struct,
+	e_no_such_struct
 };
 
 // base class of compiling message

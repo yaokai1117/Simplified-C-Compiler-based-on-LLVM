@@ -1,9 +1,12 @@
 
-const int size = 4;
-int a[size];
+struct A{
+	int id;
+	char male;
+	float score;
+};
 
 int main()
 {
-	int a = 3.4;
-	float c[size];
+	struct A a;
+	int id = a.id;
 }

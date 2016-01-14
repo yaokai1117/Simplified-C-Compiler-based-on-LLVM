@@ -221,13 +221,13 @@ public:
 
 class FunCallNode : public ExpNode {
 public:
-	FunCallNode(std::string *name, NodeList *argv);
+	FunCallNode(ExpNode *func, NodeList *argv);
 	~FunCallNode();
 	virtual void accept(Visitor &visitor);
 
     bool hasArgs;
     NodeList *argv;
-	std::string *name;
+    ExpNode *func;
 };
 
 
@@ -402,13 +402,13 @@ public:
 
 class FuncDeclNode : public Node {
 public:
-	FuncDeclNode(std::string *name, NodeList *argv);
+	FuncDeclNode(std::string *name, bool hasArgs);
 	~FuncDeclNode();
+	void append(std::string name, ValueTypeS type);
 	virtual void accept(Visitor &visitor);
 
 	bool hasArgs;
 	std::string *name;
-	NodeList *argv;
 };
 
 

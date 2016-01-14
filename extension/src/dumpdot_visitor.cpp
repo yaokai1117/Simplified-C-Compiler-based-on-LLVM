@@ -133,7 +133,10 @@ void DumpDotVisitor::visitStructItemNode(StructItemNode *node)
 
 void DumpDotVisitor::visitFunCallNode(FunCallNode *node)
 {
-	int nThis = dumper->newNode(4, node->name->c_str(), "\\(", " ", "\\)");
+	int nThis = dumper->newNode(4, " ", "\\(", " ", "\\)");
+	int nFunc = pending.back();
+	pending.pop_back();
+	dumper->drawLine(nThis, 0, nFunc);
 	if (node->hasArgs) {
 		int length = node->argv->nodes.size();
 		dumpList(length, nThis, 2);
@@ -383,7 +386,9 @@ void DumpDotVisitor::visitFuncDeclNode(FuncDeclNode *node)
 {
 	int nThis = dumper->newNode(5, "void", node->name->c_str(), "\\(", " ", "\\)");
 	if (node->hasArgs) {
-		int length = node->argv->nodes.size();
+		NodeList *argv = node->valueTy.argv;
+		argv->accept(*this);
+		int length = argv->nodes.size();
 		dumpList(length, nThis, 3);
 	}
 	pending.insert(pending.end(), nThis);

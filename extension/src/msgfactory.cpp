@@ -30,7 +30,10 @@ map<int, string> createMsgTable()
 	t[e_argument_unmatch] = string("function argument unmatch");
 	t[e_array_size_not_constant] = string("the size of array should be constant");
 	t[e_type_unmatch] = string("unmatched type");
-	t[e_float_mod] = string("the operand of '%' can only be integers");
+	t[e_float_mod] = string("the operand of '%' must be integers");
+	t[e_function_arg_cannot_be_functon] = string("function argument type can't be a function");
+	t[e_not_a_struct] = string("the operand of '.' must be struct type");
+	t[e_no_such_struct] = string("no such struct");
 	return t;
 }
 

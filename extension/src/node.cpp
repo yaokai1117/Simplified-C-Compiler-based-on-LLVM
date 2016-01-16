@@ -164,7 +164,7 @@ void IdNode::accept(Visitor &v)
 
 
 // implementation of class ArrayItemNode
-ArrayItemNode::ArrayItemNode(ExpNode *array, ExpNode *index)
+ArrayItemNode::ArrayItemNode(ExpNode *array, NodeList *index)
 	: array(array), index(index)
 {
 	type = ARRAY_ITEM_AST;
@@ -369,7 +369,8 @@ void CondNode::accept(Visitor &v)
 		return;
 	}
 
-	lhs->accept(v);
+	if (this->op != NOT_OP)
+		lhs->accept(v);
 	rhs->accept(v);
 	v.visitCondNode(this);
 }
@@ -581,6 +582,12 @@ StructDefNode::~StructDefNode()
 
 void StructDefNode::accept(Visitor &v)
 {
+	// In some cases (such as code generation), the visiting order should be changed
+	if (v.orderChanged) {
+		v.visitStructDefNode(this);
+		return;
+	}
+
 	v.enterStructDefNode(this);
 	decls->accept(v);
 	v.visitStructDefNode(this);

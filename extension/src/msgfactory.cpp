@@ -23,7 +23,6 @@ map<int, string> createMsgTable()
 
 	t[e_global_init_not_constant] = string("global variables can only be initialized by constant value");
 	t[e_undeclared_identifier] = string("use of undeclared identifier");
-	t[e_redefinition_of_function] = string("redefinition fo function");
 	t[e_unknown_function] = string("unknown function reference");
 	t[e_redefinition_of_identifier] = string("redefinition of identifier");
 	t[e_assign_to_constant] = string("assignment to a constant is illegal");
@@ -34,6 +33,7 @@ map<int, string> createMsgTable()
 	t[e_function_arg_cannot_be_functon] = string("function argument type can't be a function");
 	t[e_not_a_struct] = string("the operand of '.' must be struct type");
 	t[e_no_such_struct] = string("no such struct");
+	t[e_array_index_not_int] = string("the index of array should be int type");
 	return t;
 }
 

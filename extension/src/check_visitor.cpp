@@ -103,12 +103,6 @@ static bool typeIsEqual(ValueTypeS *a, ValueTypeS *b)
 		return true;
 }
 
-static ValueTypeS typeUp(ValueTypeS *ta, ValueTypeS *tb)
-{
-	ValueTypeS retT;
-	retT.type = NO_TYPE;
-	return retT;
-}
 
 static ExpNode *getSimpleNode(ValueTypeS vType, Loc *loc)
 {
@@ -141,6 +135,29 @@ static ExpNode *getSimpleNode(ValueTypeS vType, Loc *loc)
 static bool isAtomType(ValueTypeS vType)
 {
 	return vType.type == INT_TYPE || vType.type == FLOAT_TYPE || vType.type == CHAR_TYPE;
+}
+
+static ValueTypeS typeUp(ValueTypeS *ta, ValueTypeS *tb)
+{
+	ValueTypeS retT;
+	if (isAtomType(*ta) && isAtomType(*tb)) {
+		if (ta->type == FLOAT_TYPE || tb->type == FLOAT_TYPE) {
+			ta->dstType = FLOAT_TYPE;
+			tb->dstType = FLOAT_TYPE;
+			retT.type = FLOAT_TYPE;
+			return retT;
+		}
+
+		if (ta->type == INT_TYPE || tb->type == INT_TYPE) {
+			ta->dstType = INT_TYPE;
+			tb->dstType = INT_TYPE;
+			retT.type = INT_TYPE;
+			return retT;
+		}
+	}
+
+	retT.type = NO_TYPE;
+	return retT;
 }
 
 
@@ -194,7 +211,7 @@ void CheckVisitor::handleArrayType(ValueTypeS *vType)
 				return;
 			}
 		}
-		vType->argv = NULL;
+		//vType->argv = NULL;
 		handleArrayType(vType->atom);
 		return;
 	case PTR_TYPE:
@@ -262,6 +279,7 @@ void CheckVisitor::visitNumNode(NumNode *node)
 	ValueTypeS &vType = node->valueTy;
 
 	vType.type = INT_TYPE;
+	vType.dstType = NO_TYPE;
 	vType.isConstant = true;
 
 	vType.isComputed = true;
@@ -276,6 +294,7 @@ void CheckVisitor::visitFNumNode(FNumNode *node)
 	ValueTypeS &vType = node->valueTy;
 
 	vType.type = FLOAT_TYPE;
+	vType.dstType = NO_TYPE;
 	vType.isConstant = true;
 
 	vType.isComputed = true;
@@ -290,6 +309,7 @@ void CheckVisitor::visitCharNode(CharNode *node)
 	ValueTypeS &vType = node->valueTy;
 
 	vType.type = CHAR_TYPE;
+	vType.dstType = NO_TYPE;
 	vType.isConstant = true;
 
 	vType.isComputed = true;
@@ -314,6 +334,10 @@ void CheckVisitor::visitBinaryExpNode(BinaryExpNode *node)
 		return;
 	}
 
+	vType.type = lhsTy.type;
+	vType.dstType = NO_TYPE;
+	vType.isConstant = true;
+
 	if (!typeIsEqual(&lhsTy, &rhsTy)) {
 		ValueTypeS upTy = typeUp(&lhsTy, &rhsTy);
 		if (upTy.type == NO_TYPE) {
@@ -321,9 +345,8 @@ void CheckVisitor::visitBinaryExpNode(BinaryExpNode *node)
 			msgFactory.newError(e_type_unmatch, node->loc->first_line, node->loc->first_column);
 			return;
 		}
+		vType.type = upTy.type;
 	}
-
-	vType.type = lhsTy.type;
 
 	if (node->op == '%' && vType.type == FLOAT_TYPE) {
 		errorFlag = false;
@@ -395,9 +418,8 @@ void CheckVisitor::visitUnaryExpNode(UnaryExpNode *node)
 			msgFactory.newError(e_type_unmatch, node->loc->first_line, node->loc->first_column);
 			return;
 		}
-		vType.type = operandTy.type;
+		vType = operandTy;
 		if (operandTy.isComputed) {
-			vType.isComputed = true;
 			if (operandTy.type == INT_TYPE)
 				vType.constVal.ival = -operandTy.constVal.ival;
 			else
@@ -406,6 +428,7 @@ void CheckVisitor::visitUnaryExpNode(UnaryExpNode *node)
 		break;
 	case '&':
 		vType.type = PTR_TYPE;
+		vType.dstType = NO_TYPE;
 		vType.atom = &(node->operand->valueTy);
 		break;
 	case '*':
@@ -448,26 +471,24 @@ void CheckVisitor::visitArrayItemNode(ArrayItemNode *node)
 
 	ValueTypeS &vType = node->valueTy;
 	ValueTypeS &arrayTy = node->array->valueTy;
-	ValueTypeS &indexTy = node->index->valueTy;
 
-	if (arrayTy.type != ARRAY_TYPE || indexTy.type != INT_TYPE) {
+	if (arrayTy.type != ARRAY_TYPE) {
 		errorFlag = true;
 		printf("array type error\n");
 		return;
 	}
 
-	// constant propagation
-	if (indexTy.isComputed && node->index->type != NUM_AST)
-		node->index = getSimpleNode(indexTy, node->index->loc);
-
-	if (arrayTy.dim == 1)
-		vType = *(arrayTy.atom);
-	else {
-		vType = arrayTy;
-		vType.dim--;
-		for (int i = 0; i < vType.dim ; i++)
-			vType.base[i] = vType.base[i+1];
+	list<Node *> nodes = node->index->nodes;
+	for (list<Node *>::iterator it = nodes.begin();
+			it != nodes.end(); ++it) {
+		if ((*it)->valueTy.type != INT_TYPE) {
+			errorFlag = true;
+			msgFactory.newError(e_array_index_not_int, (*it)->loc->first_line, (*it)->loc->first_column);
+			return;
+		}
 	}
+
+	vType = *(arrayTy.atom);
 
 	printType(vType);
 	printf("  : ArrayItem\n");
@@ -514,6 +535,7 @@ void CheckVisitor::visitFunCallNode(FunCallNode *node)
 	if (node->hasArgs) {
 		std::list<Node *> nodes1 = node->argv->nodes;
 		std::list<Node *> nodes2 = funcTy.argv->nodes;
+
 		if (nodes1.size() != nodes2.size()) {
 			errorFlag = true;
 			msgFactory.newError(e_argument_unmatch, node->loc->first_line, node->loc->first_column);
@@ -558,7 +580,6 @@ void CheckVisitor::visitIdVarDefNode(IdVarDefNode *node)
 		ValueTypeS &asnTy = node->value->valueTy;
 		if (!typeIsEqual(&vType, &asnTy)) {	// type cast
 			asnTy.dstType = vType.type;
-			msgFactory.newWarning(w_type_cast, node->loc->first_line, node->loc->first_column);
 		}
 		if (!asnTy.isComputed && isGlobal) {
 			errorFlag = true;
@@ -566,7 +587,7 @@ void CheckVisitor::visitIdVarDefNode(IdVarDefNode *node)
 			return;
 		}
 		if (vType.isConstant && asnTy.isComputed) {						// constant propagation
-			node->value = getSimpleNode(asnTy, node->loc);
+			node->value = getSimpleNode(asnTy, node->value->loc);
 			vType.isComputed = true;
 			vType.constVal = asnTy.constVal;
 		}
@@ -625,9 +646,10 @@ void CheckVisitor::visitArrayVarDefNode(ArrayVarDefNode *node)
 				it != nodes.end(); it++) {
 			if (!typeIsEqual(atomTy, &(*it)->valueTy)) {
 				(*it)->valueTy.dstType = atomTy->type;
-				msgFactory.newWarning(w_type_cast, node->loc->first_line, node->loc->first_column);
 			}
 		}
+		if (vType.base[0] == 0)
+			vType.base[0] = nodes.size();
 	}
 	else {
 		if (vType.isConstant) {
@@ -659,7 +681,7 @@ void CheckVisitor::visitArrayVarDefNode(ArrayVarDefNode *node)
 	}
 
 	printType(vType);
-	printf("  : ArraryDef\n");
+	printf("  : ArrayDef\n");
 }
 
 
@@ -704,10 +726,22 @@ void CheckVisitor::visitAssignStmtNode(AssignStmtNode *node)
 	}
 
 	if (!typeIsEqual(&lvalTy, &expTy)) {
-		errorFlag = true;
-		msgFactory.newError(e_type_unmatch, node->loc->first_line, node->loc->first_column);
-		return;
+		if (isAtomType(lvalTy) && isAtomType(expTy)) {
+			expTy.dstType = lvalTy.type;
+		}
+		else {
+			errorFlag = true;
+			msgFactory.newError(e_type_unmatch, node->loc->first_line, node->loc->first_column);
+			return;
+		}
 	}
+
+	if (expTy.isComputed) {
+		node->exp = getSimpleNode(expTy, node->exp->loc);
+	}
+
+	printType(lvalTy);
+	printf("  : Assignment\n");
 }
 
 
@@ -771,7 +805,7 @@ void CheckVisitor::visitFuncDeclNode(FuncDeclNode *node)
 
 	if (globalSymTabble.find(*node->name) != globalSymTabble.end()) {
 		errorFlag = true;
-		msgFactory.newError(e_redefinition_of_function, node->loc->first_line, node->loc->first_column);
+		msgFactory.newError(e_redefinition_of_identifier, node->loc->first_line, node->loc->first_column);
 		return;
 	}
 
@@ -806,6 +840,7 @@ void CheckVisitor::visitStructDefNode(StructDefNode *node)
 {
 	structTable[*node->name] = symTableStack[stackPtr-1];
 	stackPtr--;
+	isGlobal = true;
 }
 
 
@@ -855,6 +890,7 @@ void CheckVisitor::enterFuncDefNode(FuncDefNode *node)
 
 void CheckVisitor::enterStructDefNode(StructDefNode *node)
 {
+	isGlobal = false;
 	symTableStack[stackPtr] = new map<string, ValueTypeS>;
 	stackPtr++;
 }

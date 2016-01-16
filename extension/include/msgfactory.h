@@ -23,7 +23,6 @@ enum MsgType {
 
 	e_global_init_not_constant,
 	e_undeclared_identifier,
-	e_redefinition_of_function,
 	e_unknown_function,
 	e_redefinition_of_identifier,
 	e_assign_to_constant,
@@ -33,7 +32,8 @@ enum MsgType {
 	e_float_mod,
 	e_function_arg_cannot_be_functon,
 	e_not_a_struct,
-	e_no_such_struct
+	e_no_such_struct,
+	e_array_index_not_int
 };
 
 // base class of compiling message

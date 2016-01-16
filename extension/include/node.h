@@ -198,12 +198,12 @@ public:
 
 class ArrayItemNode : public ExpNode {
 public:
-	ArrayItemNode(ExpNode *array, ExpNode *index);
+	ArrayItemNode(ExpNode *array, NodeList *index);
 	~ArrayItemNode();
 	virtual void accept(Visitor &visitor);
 
 	ExpNode *array;
-	ExpNode *index;
+	NodeList *index;
 };
 
 

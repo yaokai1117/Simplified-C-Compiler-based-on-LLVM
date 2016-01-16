@@ -28,6 +28,7 @@ static void setAtomType(ValueTypeS *pType, ValueTypeS atomTy);
 %}
 
 %debug
+%expect 1
 
 %locations
 %initial-action 
@@ -157,10 +158,10 @@ LVal: ID
 				delete $1;
 			}
 		}
-	| Exp LBRACKET Exp RBRACKET
+	| Exp ArraySuffix
 		{
 			if (!errorFlag) {
-				$$ = new ArrayItemNode((ExpNode*)$1, (ExpNode*)$3);
+				$$ = new ArrayItemNode((ExpNode*)$1, $2);
 				$$->setLoc((Loc*)&(@$));
 				astNodes.push_back($$);
 			}
@@ -979,7 +980,11 @@ static void setAtomType(ValueTypeS *pType, ValueTypeS atomTy)
 {
 	while (pType->type != ATOM_TYPE)
 		pType = pType->atom;
-	*pType = atomTy;
+	pType->type = atomTy.type;
+	pType->isConstant = atomTy.isConstant;
+	pType->isExtern = atomTy.isExtern;
+	pType->isStatic = atomTy.isStatic;
+	pType->structName = atomTy.structName;
 }
 
 

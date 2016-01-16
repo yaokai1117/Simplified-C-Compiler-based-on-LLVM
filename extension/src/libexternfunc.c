@@ -22,7 +22,12 @@ void print_newline()
 	printf("\n");
 }
 
-void print_char(int c) 
+void print_char(char c) 
 {
 	printf("%c", c);
+}
+
+void print_float(float f)
+{
+	printf("%f", f);
 }

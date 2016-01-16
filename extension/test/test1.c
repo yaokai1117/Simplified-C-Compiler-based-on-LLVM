@@ -1,25 +1,27 @@
 
 extern void print(int c);
-extern void print_space();
+extern void print_char(char c);
+extern void print_float(float c);
 extern void print_newline();
+
+struct Sa{
+	int id;
+	float score;
+	char male;
+};
+
+struct Sa sa;
 
 void main()
 {
-	int a = 1;
-	int b = 2;
-
-	if (a < b)
-		print(a);
-	else
-		print(b);
-	print_newline();
-
-	int i = 0;
-	while (i < 8) {
-		print(i);
-		print_space();
-		i = i + 1;
-	}
+	struct Sa testS;
+	float a;
+	testS.id = 233;
+	testS.score = 3.14;
+	a = 2.34;
+	print(testS.id);
+	print_float(testS.score);
+	print_char(' ');
 	print_newline();
 }
 

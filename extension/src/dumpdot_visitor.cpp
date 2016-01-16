@@ -105,13 +105,12 @@ void DumpDotVisitor::visitArrayItemNode(ArrayItemNode *node)
 {
 	int nThis = dumper->newNode(4, " ", "\\[", " ", "\\]");
 
-	int nIndex = pending.back();
-	pending.pop_back();
 	int nArray = pending.back();
 	pending.pop_back();
 
 	dumper->drawLine(nThis, 0, nArray);
-	dumper->drawLine(nThis, 2, nIndex);
+	int length = node->index->nodes.size();
+	dumpList(length, nThis, 2);
 
 	pending.insert(pending.end(), nThis);
 }

@@ -30,7 +30,99 @@ extern ExecutionEngine *TheExecutionEngine;
 extern FunctionPassManager *TheFPM;
 static IRBuilder<> Builder(llvm::getGlobalContext());
 
-Value *CodegenVisitor::lookUp(std::string nameStr, bool &isConst)
+
+static ValueTypeS getArrayItemType(ValueTypeS arrayTy)
+{
+	ValueTypeS vType;
+
+	if (arrayTy.dim == 1)
+		vType = *(arrayTy.atom);
+	else {
+		vType = arrayTy;
+		vType.dim--;
+		for (int i = 0; i < vType.dim ; i++)
+			vType.base[i] = vType.base[i+1];
+	}
+
+	return vType;
+}
+
+static GlobalVariable::LinkageTypes getLinkageTyp(ValueTypeS vType)
+{
+	if (vType.isStatic)
+		return GlobalVariable::InternalLinkage;
+	else
+		return GlobalVariable::ExternalLinkage;
+}
+
+
+static Type *getLLVMVarType(ValueTypeS vType)
+{
+	switch (vType.type) {
+	case NO_TYPE:
+		return nullptr;
+	case INT_TYPE:
+		return Type::getInt32Ty(getGlobalContext());
+	case FLOAT_TYPE:
+		return Type::getFloatTy(getGlobalContext());
+	case CHAR_TYPE:
+		return Type::getInt8Ty(getGlobalContext());
+	case VOID_TYPE:
+		return Type::getVoidTy(getGlobalContext());
+	case STRUCT_TYPE:
+		return TheModule->getTypeByName(*vType.structName);
+	case PTR_TYPE:
+		return PointerType::get(getLLVMVarType(*vType.atom), 0);
+	case ARRAY_TYPE:
+		return ArrayType::get(getLLVMVarType(getArrayItemType(vType)), vType.base[0]);
+	case FUNC_TYPE:
+		{
+		std::vector<Type *> types;
+		if (vType.argv != NULL) {
+			std::list<Node *> nodes = vType.argv->nodes;
+			for (std::list<Node *>::iterator it = nodes.begin();
+					it != nodes.end(); ++it) {
+				types.push_back(getLLVMVarType((*it)->valueTy));
+			}
+		}
+		return FunctionType::get(getLLVMVarType(*vType.atom), types, false);
+		}
+	default:
+		return nullptr;
+	}
+}
+
+
+static Value *typeCast(ValueTypeS vType, Value *v)
+{
+	switch (vType.type) {
+	case INT_TYPE:
+		if (vType.dstType == FLOAT_TYPE)		// int to float
+			v = Builder.CreateCast(Instruction::SIToFP, v, Type::getFloatTy(getGlobalContext()));
+		else 									// int to char
+			v = Builder.CreateCast(Instruction::Trunc, v, Type::getInt8Ty(getGlobalContext()));
+		break;
+	case FLOAT_TYPE:
+		if (vType.dstType == INT_TYPE)		// float to int
+			v = Builder.CreateCast(Instruction::FPToSI, v, Type::getInt32Ty(getGlobalContext()));
+		else								// float to char
+			v = Builder.CreateCast(Instruction::FPToSI, v, Type::getInt8Ty(getGlobalContext()));
+		break;
+	case CHAR_TYPE:
+		if (vType.dstType == INT_TYPE)		// char to int
+			v = Builder.CreateCast(Instruction::SExt, v, Type::getInt32Ty(getGlobalContext()));
+		else								// char to float
+			v = Builder.CreateCast(Instruction::SIToFP, v, Type::getFloatTy(getGlobalContext()));
+		break;
+	default:
+		break;
+	}
+
+	return v;
+}
+
+
+Value *CodegenVisitor::lookUp(std::string nameStr)
 {
 	Value *retV = nullptr;
 	int sp = StackPtr;
@@ -39,12 +131,10 @@ Value *CodegenVisitor::lookUp(std::string nameStr, bool &isConst)
 		std::map<std::string, AllocaInst *> &LocalVariables = *LocalTableStack[sp-1];
 		if (ConstLocalVariables.find(nameStr) != ConstLocalVariables.end()) {
 			retV = ConstLocalVariables[nameStr];
-			isConst = true;
 			break;
 		}
 		else if (LocalVariables.find(nameStr) != LocalVariables.end()) {
 			retV = LocalVariables[nameStr];
-			isConst = false;
 			break;
 		}
 		else {
@@ -55,7 +145,6 @@ Value *CodegenVisitor::lookUp(std::string nameStr, bool &isConst)
 	if (retV == nullptr) {
 		if (GloblalVariables.find(nameStr) != GloblalVariables.end()) {
 			retV = GloblalVariables[nameStr];
-			isConst = ((GlobalVariable *)retV)->isConstant();
 		}
 		else
 			return 0;
@@ -99,13 +188,27 @@ void CodegenVisitor::visitNodeList(NodeList *node)
 void CodegenVisitor::visitNumNode(NumNode *node)
 {
 	Value *v = ConstantInt::get(getGlobalContext(), APInt(32, node->val, true));
+	ValueTypeS vType = node->valueTy;
+	if (vType.dstType != NO_TYPE && vType.dstType != vType.type) {
+		if (vType.dstType == FLOAT_TYPE)		// int to float
+			v = Builder.CreateCast(Instruction::SIToFP, v, Type::getFloatTy(getGlobalContext()));
+		else									// int to char
+			v = Builder.CreateCast(Instruction::Trunc, v, Type::getInt8Ty(getGlobalContext()));
+	}
 	pending.insert(pending.end(), v);
 }
 
 
 void CodegenVisitor::visitFNumNode(FNumNode *node)
 {
-	Value *v = ConstantFP::get(getGlobalContext(), APFloat(node->fval));
+	Value *v = ConstantFP::get(getGlobalContext(), APFloat((float)node->fval));
+	ValueTypeS vType = node->valueTy;
+	if (vType.dstType != NO_TYPE && vType.dstType != vType.type) {
+		if (vType.dstType == INT_TYPE)		// float to int
+			v = Builder.CreateCast(Instruction::FPToSI, v, Type::getInt32Ty(getGlobalContext()));
+		else								// float to char
+			v = Builder.CreateCast(Instruction::FPToSI, v, Type::getInt8Ty(getGlobalContext()));
+	}
 	pending.insert(pending.end(), v);
 }
 
@@ -113,6 +216,13 @@ void CodegenVisitor::visitFNumNode(FNumNode *node)
 void CodegenVisitor::visitCharNode(CharNode *node)
 {
 	Value *v = ConstantInt::get(getGlobalContext(), APInt(8, (int)(node->cval), true));
+	ValueTypeS vType = node->valueTy;
+	if (vType.dstType != NO_TYPE && vType.dstType != vType.type) {
+		if (vType.dstType == INT_TYPE)		// char to int
+			v = Builder.CreateCast(Instruction::SExt, v, Type::getInt32Ty(getGlobalContext()));
+		else								// char to float
+			v = Builder.CreateCast(Instruction::SIToFP, v, Type::getFloatTy(getGlobalContext()));
+	}
 	pending.insert(pending.end(), v);
 }
 
@@ -130,26 +240,53 @@ void CodegenVisitor::visitBinaryExpNode(BinaryExpNode *node)
 	}
 
 	Value *v;
-	switch (node->op) {
-	case '+':
-		v = Builder.CreateAdd(lValue, rValue, "addtmp");
-		break;
-	case '-':
-		v = Builder.CreateSub(lValue, rValue, "subtmp");
-		break;
-	case '*':
-		v = Builder.CreateMul(lValue, rValue, "multmp");
-		break;
-	case '/':
-		v = Builder.CreateSDiv(lValue, rValue, "divtmp");
-		break;
-	case '%':
-		v = Builder.CreateSRem(lValue, rValue, "modtmp");
-		break;
-	default:
-		v = 0;
-		break;
+	ValueTypeS vType = node->valueTy;
+	if (vType.type == INT_TYPE) {
+		switch (node->op) {
+		case '+':
+			v = Builder.CreateAdd(lValue, rValue, "addtmp");
+			break;
+		case '-':
+			v = Builder.CreateSub(lValue, rValue, "subtmp");
+			break;
+		case '*':
+			v = Builder.CreateMul(lValue, rValue, "multmp");
+			break;
+		case '/':
+			v = Builder.CreateSDiv(lValue, rValue, "divtmp");
+			break;
+		case '%':
+			v = Builder.CreateSRem(lValue, rValue, "modtmp");
+			break;
+		default:
+			v = 0;
+			break;
+		}
 	}
+	else {
+		switch (node->op) {
+		case '+':
+			v = Builder.CreateFAdd(lValue, rValue, "addtmp");
+			break;
+		case '-':
+			v = Builder.CreateFSub(lValue, rValue, "subtmp");
+			break;
+		case '*':
+			v = Builder.CreateFMul(lValue, rValue, "multmp");
+			break;
+		case '/':
+			v = Builder.CreateFDiv(lValue, rValue, "divtmp");
+			break;
+		default:
+			v = 0;
+			break;
+		}
+	}
+
+	if (vType.dstType != NO_TYPE && vType.dstType != vType.type) {
+		v = typeCast(vType, v);
+	}
+
 	pending.insert(pending.end(), v);
 }
 
@@ -173,6 +310,7 @@ void CodegenVisitor::visitUnaryExpNode(UnaryExpNode *node)
 	case '-':
 		v = Builder.CreateNeg(operandV, "negtmp");
 		break;
+	case '&':
 	default:
 		v = 0;
 		break;
@@ -184,19 +322,40 @@ void CodegenVisitor::visitUnaryExpNode(UnaryExpNode *node)
 
 void CodegenVisitor::visitIdNode(IdNode *node)
 {
-	bool isConst = false;
-	Value *vPtr = lookUp(*(node->name), isConst);
+	Value *vPtr = lookUp(*node->name);
 
 	Value *v;
 
-	// if vPtr is a global contant, return its value directly
-	if (vPtr->getValueID() == vPtr->GlobalVariableVal &&
-			((GlobalVariable *)vPtr)->isConstant()) {
-		v = ((GlobalVariable *)vPtr)->getInitializer();
+	// if this id is a function name
+	if (vPtr == nullptr) {
+		v = TheModule->getFunction(*node->name);
 	}
+
+	// if this id is an array
+	else if (((AllocaInst*)vPtr)->getAllocatedType()->isArrayTy()) {
+		v = vPtr;
+	}
+
+	// if this id is a struct
+	else if (((AllocaInst*)vPtr)->getAllocatedType()->isStructTy()) {
+		v = vPtr;
+	}
+
+	// else
 	else {
-		v = Builder.CreateLoad(vPtr, node->name->c_str());
+		// if vPtr is a global contant, return its value directly
+		if (vPtr->getValueID() == vPtr->GlobalVariableVal &&
+				((GlobalVariable *)vPtr)->isConstant()) {
+			v = ((GlobalVariable *)vPtr)->getInitializer();
+		}
+		else {
+			v = Builder.CreateLoad(vPtr, node->name->c_str());
+		}
 	}
+
+	ValueTypeS vType = node->valueTy;
+	if (vType.dstType != NO_TYPE && vType.dstType != vType.type)
+		v = typeCast(vType, v);
 
 	pending.insert(pending.end(), v);
 }
@@ -204,64 +363,85 @@ void CodegenVisitor::visitIdNode(IdNode *node)
 
 void CodegenVisitor::visitArrayItemNode(ArrayItemNode *node)
 {
-	/*
-	bool isConst = false;
-	Value *arrayPtr = lookUp(*(node->name), isConst);
-
-	Value *indexV = pending.back();
-	pending.pop_back();
-	if (indexV == 0) {
-		pending.insert(pending.end(), 0);
-		return;
-	}
+	Value *retV;
+	int size = node->index->nodes.size();
+	vector<Value*> indexVs = getValuesFromStack(size);
 
 	std::vector<Value *> idxList;
 	idxList.push_back(ConstantInt::get(getGlobalContext(), APInt(32, 0, true)));
-	Value *sextIndex = Builder.CreateSExt(indexV, Type::getInt64Ty(getGlobalContext()));
-	idxList.push_back(sextIndex);
+	for (int i = 0; i < size; i++) {
+		Value *sextIndex = Builder.CreateSExt(indexVs[i], Type::getInt64Ty(getGlobalContext()));
+		idxList.push_back(sextIndex);
+	}
+
+	Value *arrayPtr = pending.back();
+	pending.pop_back();
 
 	Value *arrayItemPtr = Builder.CreateGEP(arrayPtr, idxList, "array_ptr");
-	Value *retV = Builder.CreateLoad(arrayItemPtr, "array_item_" + *(node->name));
-	*/
-	Value *retV = ConstantInt::get(getGlobalContext(), APInt(32, 0, true));
+	retV = Builder.CreateLoad(arrayItemPtr, "array_item");
 	pending.insert(pending.end(), retV);
 }
 
 
 void CodegenVisitor::visitStructItemNode(StructItemNode *node)
 {
+	// struct.item
+	if (!node->isPointer) {
+		Value *structPtr = pending.back();
+		pending.pop_back();
+
+		std::string structName = *node->stru->valueTy.structName;
+
+		std::map<std::string, int> &offsetMap = *structOffsetTable[structName];
+		int offset = offsetMap[*node->itemName];
+		std::vector<Value *> idxV;
+		idxV.push_back(ConstantInt::get(getGlobalContext(), APInt(32, 0, true)));
+		idxV.push_back(ConstantInt::get(getGlobalContext(), APInt(32, offset, true)));
+		Value *structItemPtr = Builder.CreateGEP(structPtr, idxV, "struct_item");
+
+		Value *retV = Builder.CreateLoad(structItemPtr, false);
+
+		pending.insert(pending.end(), retV);
+	}
+	// structPtr->item
+	else {
+
+	}
 }
 
 
 void CodegenVisitor::visitFunCallNode(FunCallNode *node)
 {
-//	// Look up the name in the global module table.
-//	Function *calleeF = TheModule->getFunction(*(node->name));
-//
-//	std::list<Node *> arguments;
-//	if (node->hasArgs)
-//		arguments = node->argv->nodes;
-//
-//	std::vector<Value *> argsV = getValuesFromStack(arguments.size());
-//
-//	Value *retV = Builder.CreateCall(calleeF, argsV);
-//	pending.insert(pending.end(), retV);
+	// get args
+	std::list<Node *> arguments;
+	if (node->hasArgs)
+		arguments = node->argv->nodes;
+
+	std::vector<Value *> argsV = getValuesFromStack(arguments.size());
+
+	// get callee
+	Function *calleeF = (Function *)pending.back();
+	pending.pop_back();
+
+	Value *retV = Builder.CreateCall(calleeF, argsV);
+	pending.insert(pending.end(), retV);
 }
 
 
 void CodegenVisitor::visitIdVarDefNode(IdVarDefNode *node)
 {
 	std::string *name = node->name;
+	Type *type = getLLVMVarType(node->valueTy);
 	// global variable
 	if (Builder.GetInsertBlock() == nullptr) {
 		GlobalVariable *gVar = new GlobalVariable(*TheModule, /* module */
-				Type::getInt32Ty(getGlobalContext()), /* type */
+				type, /* type */
 				node->valueTy.isConstant, 	/* is constant ? */
-				GlobalValue::ExternalLinkage, /* linkage */
+				getLinkageTyp(node->valueTy), /* linkage */
 				0,	/* initializer */
 				name->c_str() /* name */);
-		gVar->setAlignment(4);
 
+		// initialization
 		Value *val = 0;
 		if (node->isAssigned) {
 			val = pending.back();
@@ -269,10 +449,10 @@ void CodegenVisitor::visitIdVarDefNode(IdVarDefNode *node)
 			if (val == 0)
 				return;
 
-			gVar->setInitializer((ConstantInt*)val);
+			gVar->setInitializer((Constant*)val);
 		}
 		else {
-			gVar->setInitializer(ConstantInt::get(getGlobalContext(), APInt(32, 0, true)));
+			gVar->setInitializer(Constant::getNullValue(type));
 		}
 
 		GloblalVariables[*name] = gVar;
@@ -286,7 +466,7 @@ void CodegenVisitor::visitIdVarDefNode(IdVarDefNode *node)
 		IRBuilder<> TmpBuilder(&currentFunc->getEntryBlock(), currentFunc->getEntryBlock().begin());
 
 		AllocaInst *variable =
-				TmpBuilder.CreateAlloca(Type::getInt32Ty(getGlobalContext()), 0, name->c_str());
+				TmpBuilder.CreateAlloca(getLLVMVarType(node->valueTy), 0, name->c_str());
 
 		Value *val = 0;
 		if (node->isAssigned) {
@@ -313,6 +493,7 @@ void CodegenVisitor::visitIdVarDefNode(IdVarDefNode *node)
 void CodegenVisitor::visitArrayVarDefNode(ArrayVarDefNode *node)
 {
 	std::string *name = node->name;
+	ValueTypeS vType = node->valueTy;
 
 	int valuesSize;
 	if (node->isAssigned)
@@ -321,10 +502,9 @@ void CodegenVisitor::visitArrayVarDefNode(ArrayVarDefNode *node)
 		valuesSize = 0;
 
 	// get the size of array
-	int arraySize = arraySize = valuesSize;
+	int arraySize = vType.base[0];
 
-
-	ArrayType* arrayType = ArrayType::get(IntegerType::get(TheModule->getContext(), 32), arraySize);
+	ArrayType* arrayType = (ArrayType*)getLLVMVarType(vType);
 
 	// global variable
 	if (Builder.GetInsertBlock() == nullptr) {
@@ -333,26 +513,25 @@ void CodegenVisitor::visitArrayVarDefNode(ArrayVarDefNode *node)
 		GlobalVariable *gVar = new GlobalVariable(*TheModule, /* module */
 						arrayType, 		/* type */
 						node->valueTy.isConstant, 	/* is constant ? */
-						GlobalValue::ExternalLinkage, /* linkage */
+						getLinkageTyp(node->valueTy), /* linkage */
 						0,	/* initializer */
 						name->c_str() /* name */);
-		gVar->setAlignment(4);
 
 		// initialize
 		std::vector<Constant *> arrayItems(arraySize);
 		if (node->isAssigned) {
 			std::vector<Value *> values = getValuesFromStack(valuesSize);
-			for (int i = 0; i < arraySize; i++) {
-				if (i < valuesSize) {
+			for (int i = 0; i < arraySize; ++i) {
+				if (i < valuesSize)
 					arrayItems[i] = (Constant *)(values[i]);
-				}
 				else
-					arrayItems[i] = ConstantInt::get(getGlobalContext(), APInt(32, 0, true));
+					arrayItems[i] = Constant::getNullValue(arrayType->getArrayElementType());
 			}
 		}
 		else {
-			arrayItems = std::vector<Constant *>(arraySize,
-					ConstantInt::get(getGlobalContext(), APInt(32, 0, true)));
+			for (int i = 0; i < arraySize; ++i) {
+				arrayItems[i] = Constant::getNullValue(arrayType->getArrayElementType());
+			}
 		}
 
 		Constant* constArray = ConstantArray::get(arrayType, arrayItems);
@@ -375,7 +554,7 @@ void CodegenVisitor::visitArrayVarDefNode(ArrayVarDefNode *node)
 				if (i < valuesSize)
 					v = values[i];
 				else
-					v = ConstantInt::get(getGlobalContext(), APInt(32, 0, true));
+					v = Constant::getNullValue(arrayType->getArrayElementType());
 
 				std::vector<Value *> idxList;
 				idxList.push_back(ConstantInt::get(getGlobalContext(), APInt(32, 0, true)));
@@ -400,58 +579,104 @@ void CodegenVisitor::visitArrayVarDefNode(ArrayVarDefNode *node)
 
 void CodegenVisitor::visitEmptyNode(EmptyNode *node)
 {
+	// empty
 }
 
 
 void CodegenVisitor::visitBlockNode(BlockNode *node)
 {
+	// exit current scope
+	StackPtr--;
+	delete LocalTableStack[StackPtr];
+	delete ConstLocalTableStack[StackPtr];
 }
 
 
 void CodegenVisitor::visitVarDeclNode(VarDeclNode *node)
 {
+	// empty
 }
 
 
 void CodegenVisitor::visitAssignStmtNode(AssignStmtNode *node)
 {
-	bool isConst;
 	node->exp->accept(*this);
 	Value *expV = pending.back();
 	pending.pop_back();
 	if (expV == 0)
 		return;
 
+	ValueTypeS lvalTy = node->lval->valueTy;
+	ValueTypeS expTy = node->exp->valueTy;
 
+	switch (node->lval->type) {
+	case ID_AST:
+	{
+		ValueTypeS vType = node->lval->valueTy;
 
-	// "a = b + 1;"
-	if (node->lval->type == ID_AST) {
+		// if this id is a struct
+		if (vType.type == STRUCT_TYPE) {
+			// no time to support this...sad
+			break;
+		}
+
+		// id is atom type
 		IdNode *lval = dynamic_cast<IdNode *>(node->lval);
-		Value *lvalV = lookUp(*(lval->name), isConst);
+		Value *lvalV = lookUp(*(lval->name));
 		Builder.CreateStore(expV, lvalV);
+		break;
 	}
-	// "a[4] = b + 1;"
-	else {
-		/*
-		ArrayItemNode *arrayItemNode = dynamic_cast<ArrayItemNode *>(node->lval);
+	case ARRAY_ITEM_AST:
+	{
+		ArrayItemNode *lval = dynamic_cast<ArrayItemNode *>(node->lval);
+		int size = lval->index->nodes.size();
 
-		Value *arrayPtr = lookUp(*(arrayItemNode->name), isConst);
+		lval->array->accept(*this);
+		lval->index->accept(*this);
 
-		arrayItemNode->index->accept(*this);
-		Value *indexV = pending.back();
-		pending.pop_back();
-		if (indexV == 0)
-			return;
-
+		vector<Value*> indexVs = getValuesFromStack(size);
 		std::vector<Value *> idxList;
 		idxList.push_back(ConstantInt::get(getGlobalContext(), APInt(32, 0, true)));
-		Value *sextIndex = Builder.CreateSExt(indexV, Type::getInt64Ty(getGlobalContext()));
-		idxList.push_back(sextIndex);
+		for (int i = 0; i < size; i++) {
+			Value *sextIndex = Builder.CreateSExt(indexVs[i], Type::getInt64Ty(getGlobalContext()));
+			idxList.push_back(sextIndex);
+		}
+
+		Value *arrayPtr = pending.back();
+		pending.pop_back();
 
 		Value *arrayItemPtr = Builder.CreateGEP(arrayPtr, idxList, "array_ptr");
-
 		Builder.CreateStore(expV, arrayItemPtr);
-		*/
+		break;
+	}
+	case STRUCT_ITEM_AST:
+	{
+		StructItemNode *lval = dynamic_cast<StructItemNode*>(node->lval);
+		if (!lval->isPointer) {
+			lval->stru->accept(*this);
+			Value *structPtr = pending.back();
+			pending.pop_back();
+
+			std::string structName = *lval->stru->valueTy.structName;
+
+			std::map<std::string, int> &offsetMap = *structOffsetTable[structName];
+			int offset = offsetMap[*lval->itemName];
+			std::vector<Value *> idxV;
+			idxV.push_back(ConstantInt::get(getGlobalContext(), APInt(32, 0, true)));
+			idxV.push_back(ConstantInt::get(getGlobalContext(), APInt(32, offset, true)));
+			Value *structItemPtr = Builder.CreateGEP(structPtr, idxV, "struct_item");
+
+			Builder.CreateStore(expV, structItemPtr);
+		}
+		else {
+
+		}
+		break;
+	}
+	case UNARY_EXP_AST:
+		break;
+	default:
+		break;
 	}
 }
 
@@ -464,6 +689,7 @@ void CodegenVisitor::visitFunCallStmtNode(FunCallStmtNode *node)
 
 void CodegenVisitor::visitBlockStmtNode(BlockStmtNode *node)
 {
+	// empty
 }
 
 
@@ -554,28 +780,55 @@ void CodegenVisitor::visitCondNode(CondNode *node)
 
 	if (rValue == 0 || lValue == 0)
 		retV = 0;
-	switch (op) {
-	case LT_OP:
-		retV = Builder.CreateICmpSLT(lValue, rValue, "ltcmp");
-		break;
-	case GT_OP:
-		retV = Builder.CreateICmpSGT(lValue, rValue, "rtcmp");
-		break;
-	case LTE_OP:
-		retV = Builder.CreateICmpSLE(lValue, rValue, "lecmp");
-		break;
-	case GTE_OP:
-		retV = Builder.CreateICmpSGE(lValue, rValue, "gecmp");
-		break;
-	case EQ_OP:
-		retV = Builder.CreateICmpEQ(lValue, rValue, "eqcmp");
-		break;
-	case NEQ_OP:
-		retV = Builder.CreateICmpNE(lValue, rValue, "necmp");
-		break;
-	default:
-		retV = 0;
-		break;
+	if (node->lhs->valueTy.type == INT_TYPE) {
+		switch (op) {
+		case LT_OP:
+			retV = Builder.CreateICmpSLT(lValue, rValue, "ltcmp");
+			break;
+		case GT_OP:
+			retV = Builder.CreateICmpSGT(lValue, rValue, "rtcmp");
+			break;
+		case LTE_OP:
+			retV = Builder.CreateICmpSLE(lValue, rValue, "lecmp");
+			break;
+		case GTE_OP:
+			retV = Builder.CreateICmpSGE(lValue, rValue, "gecmp");
+			break;
+		case EQ_OP:
+			retV = Builder.CreateICmpEQ(lValue, rValue, "eqcmp");
+			break;
+		case NEQ_OP:
+			retV = Builder.CreateICmpNE(lValue, rValue, "necmp");
+			break;
+		default:
+			retV = 0;
+			break;
+		}
+	}
+	else {
+		switch (op) {
+		case LT_OP:
+			retV = Builder.CreateFCmpOLT(lValue, rValue, "ltcmp");
+			break;
+		case GT_OP:
+			retV = Builder.CreateFCmpOGT(lValue, rValue, "rtcmp");
+			break;
+		case LTE_OP:
+			retV = Builder.CreateFCmpOLE(lValue, rValue, "lecmp");
+			break;
+		case GTE_OP:
+			retV = Builder.CreateFCmpOGE(lValue, rValue, "gecmp");
+			break;
+		case EQ_OP:
+			retV = Builder.CreateFCmpOEQ(lValue, rValue, "eqcmp");
+			break;
+		case NEQ_OP:
+			retV = Builder.CreateFCmpONE(lValue, rValue, "necmp");
+			break;
+		default:
+			retV = 0;
+			break;
+		}
 	}
 	pending.insert(pending.end(), retV);
 }
@@ -583,11 +836,6 @@ void CodegenVisitor::visitCondNode(CondNode *node)
 
 void CodegenVisitor::visitIfStmtNode(IfStmtNode *node)
 {
-	// enter new scope
-	LocalTableStack[StackPtr] = new std::map<std::string, AllocaInst *>;
-	ConstLocalTableStack[StackPtr] = new std::map<std::string, AllocaInst *>;
-	StackPtr++;
-
 	node->cond->accept(*this);
 	Value *condV = pending.back();
 	pending.pop_back();
@@ -620,21 +868,11 @@ void CodegenVisitor::visitIfStmtNode(IfStmtNode *node)
 	// emit merge block.
 	theFunction->getBasicBlockList().push_back(mergeBB);
 	Builder.SetInsertPoint(mergeBB);
-
-	// exit current scope
-	StackPtr--;
-	delete LocalTableStack[StackPtr];
-	delete ConstLocalTableStack[StackPtr];
 }
 
 
 void CodegenVisitor::visitWhileStmtNdoe(WhileStmtNode *node)
 {
-	// enter new scope
-	LocalTableStack[StackPtr] = new std::map<std::string, AllocaInst *>;
-	ConstLocalTableStack[StackPtr] = new std::map<std::string, AllocaInst *>;
-	StackPtr++;
-
 	Function *theFunction = Builder.GetInsertBlock()->getParent();
 
 	BasicBlock *condBB = BasicBlock::Create(getGlobalContext(), "cond", theFunction);
@@ -660,12 +898,6 @@ void CodegenVisitor::visitWhileStmtNdoe(WhileStmtNode *node)
 	// End basic block
 	theFunction->getBasicBlockList().push_back(endBB);
 	Builder.SetInsertPoint(endBB);
-
-
-	// exit current scope
-	StackPtr--;
-	delete LocalTableStack[StackPtr];
-	delete ConstLocalTableStack[StackPtr];
 }
 
 
@@ -680,11 +912,13 @@ void CodegenVisitor::visitReturnStmtNdoe(ReturnStmtNode *node)
 
 void CodegenVisitor::visitBreakStmtNode(BreakStmtNode *node)
 {
+	// bug exists, so keep empty
 }
 
 
 void CodegenVisitor::visitContinueStmtNode(ContinueStmtNode *node)
 {
+	// bug exists, so keep empty
 }
 
 
@@ -695,23 +929,11 @@ void CodegenVisitor::visitFuncDeclNode(FuncDeclNode *node)
 	if (node->hasArgs)
 		argNames = node->valueTy.argv->nodes;
 
-	std::vector<Type *> Ints(argNames.size(), Type::getInt32Ty(getGlobalContext()));
-	// debug
-	Type *resultTy;
-	if (node->valueTy.type == VOID_TYPE)
-		resultTy = Type::getVoidTy(getGlobalContext());
-	else
-		resultTy = Type::getInt32Ty(getGlobalContext());
-	FunctionType *FT =
-			FunctionType::get(resultTy, Ints, false);
-	Function *F =
-	      Function::Create(FT, Function::ExternalLinkage, name->c_str(), TheModule);
 
-	// if F conflicted, there was already something named 'Name'.
-	if (F->getName() != *name) {
-		F->eraseFromParent();
-		F = TheModule->getFunction(*name);
-	}
+	FunctionType *FT = (FunctionType *)getLLVMVarType(node->valueTy);
+
+	Function *F =
+	      Function::Create(FT, getLinkageTyp(node->valueTy), name->c_str(), TheModule);
 
 	// set names for all arguments
 	Function::arg_iterator aIt = F->arg_begin();
@@ -761,7 +983,7 @@ void CodegenVisitor::visitFuncDefNode(FuncDefNode *node)
 	F->getBasicBlockList().push_back(funcEndBB);
 	Builder.SetInsertPoint(funcEndBB);
 
-	if (node->decl->valueTy.type == VOID_TYPE)
+	if (F->getReturnType() == Type::getVoidTy(getGlobalContext()))
 		Builder.CreateRetVoid();
 	else
 		Builder.CreateRet(Builder.CreateLoad(returnValue));
@@ -773,43 +995,71 @@ void CodegenVisitor::visitFuncDefNode(FuncDefNode *node)
 	// optimize the function
 	TheFPM->run(*F);
 
+	Builder.ClearInsertionPoint();
+
+
 	// exit current scope
 	StackPtr--;
 	delete LocalTableStack[StackPtr];
 	delete ConstLocalTableStack[StackPtr];
-
-	Builder.ClearInsertionPoint();
 }
 
 
 void CodegenVisitor::visitStructDefNode(StructDefNode *node)
 {
-	// need comptition
+	std::string nameStr = *node->name;
+
+	std::map<std::string, int> *structOffset = new std::map<std::string, int>;
+	StructType *structType = StructType::create(getGlobalContext(), nameStr);
+	std::vector<Type*> attrTypes;
+
+	std::list<Node *> nodes = node->decls->nodes;
+	int i = 0;
+	for (std::list<Node*>::iterator it = nodes.begin();
+			it != nodes.end(); ++it) {
+		attrTypes.push_back(getLLVMVarType((*it)->valueTy));
+		Node *defNode = dynamic_cast<VarDeclNode*>(*it)->defList->nodes.front();
+		std::string attrName = *dynamic_cast<VarDefNode*>(defNode)->name;
+		(*structOffset)[attrName] = i;
+		++i;
+	}
+
+	structOffsetTable[nameStr] = structOffset;
+
+	structType->setBody(attrTypes, false);
 }
 
 
 void CodegenVisitor::visitCompUnitNode(CompUnitNode *node)
 {
+	// empty
 }
 
 
 void CodegenVisitor::enterBlockNode(BlockNode *node)
 {
+	// enter new scope
+	LocalTableStack[StackPtr] = new std::map<std::string, AllocaInst *>;
+	ConstLocalTableStack[StackPtr] = new std::map<std::string, AllocaInst *>;
+	StackPtr++;
 }
 
 
 void CodegenVisitor::enterIfStmtNode(IfStmtNode *node)
 {
+	// empty
 }
 
 
 void CodegenVisitor::enterWhileStmtNode(WhileStmtNode *node)
 {
+	// empty
 }
 
 
 void CodegenVisitor::enterFuncDefNode(FuncDefNode *node)
 {
+	//empty
 }
 
 

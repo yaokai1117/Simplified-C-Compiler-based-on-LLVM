@@ -66,7 +66,9 @@ private:
 	llvm::BasicBlock *funcEndBB;
 	llvm::AllocaInst *returnValue;
 
-	llvm::Value *lookUp(std::string nameStr, bool &isConst);
+	std::map<std::string, std::map<std::string, int>* > structOffsetTable;
+
+	llvm::Value *lookUp(std::string nameStr);
 	std::vector<llvm::Value *> getValuesFromStack(int size);
 };
 

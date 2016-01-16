@@ -1,12 +1,6 @@
 
-struct A{
-	int id;
-	char male;
-	float score;
-};
 
 int main()
 {
-	struct A a;
-	int id = a.id;
+	int a[] = {1, 2, 4};
 }

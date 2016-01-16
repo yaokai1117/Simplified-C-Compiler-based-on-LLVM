@@ -46,7 +46,6 @@ public:
 	virtual void enterStructDefNode(StructDefNode *node);
 
 private:
-	std::vector<ValueTypeS> pending;
 
 	std::map<std::string, ValueTypeS> *symTableStack[32];
 	std::map<std::string, ValueTypeS> globalSymTabble;

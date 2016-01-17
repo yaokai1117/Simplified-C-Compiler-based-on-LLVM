@@ -298,11 +298,6 @@ void CheckVisitor::visitNumNode(NumNode *node)
 
 	vType.isComputed = true;
 	vType.constVal.ival = node->val;
-
-	if (debug) {
-		printType(vType);
-		printf("  : Num\n");
-	}
 }
 
 
@@ -317,10 +312,6 @@ void CheckVisitor::visitFNumNode(FNumNode *node)
 	vType.isComputed = true;
 	vType.constVal.fval = node->fval;
 
-	if (debug) {
-		printType(vType);
-		printf("  : Fnum\n");
-	}
 }
 
 
@@ -335,10 +326,6 @@ void CheckVisitor::visitCharNode(CharNode *node)
 	vType.isComputed = true;
 	vType.constVal.cval = node->cval;
 
-	if (debug) {
-		printType(vType);
-		printf("  : Char\n");
-	}
 }
 
 
@@ -408,11 +395,6 @@ void CheckVisitor::visitBinaryExpNode(BinaryExpNode *node)
 			break;
 		}
 	}
-
-	if (debug) {
-		printType(vType);
-		printf("  : Binary\n");
-	}
 }
 
 
@@ -480,11 +462,6 @@ void CheckVisitor::visitUnaryExpNode(UnaryExpNode *node)
 		vType = *(operandTy.atom);
 		break;
 	}
-
-	if (debug) {
-		printType(vType);
-		printf("  : Unary\n");
-	}
 }
 
 
@@ -502,10 +479,6 @@ void CheckVisitor::visitIdNode(IdNode *node)
 
 	node->valueTy = vType;
 
-	if (debug) {
-		printType(vType);
-		printf("  : Id\n");
-	}
 }
 
 
@@ -534,11 +507,6 @@ void CheckVisitor::visitArrayItemNode(ArrayItemNode *node)
 	}
 
 	vType = *(arrayTy.atom);
-
-	if (debug) {
-		printType(vType);
-		printf("  : ArrayItem\n");
-	}
 }
 
 
@@ -563,11 +531,6 @@ void CheckVisitor::visitStructItemNode(StructItemNode *node)
 	map<string, ValueTypeS> &struAttrMap = *structTable[*struTy.structName];
 
 	vType = struAttrMap[*node->itemName];
-
-	if (debug) {
-		printType(vType);
-		printf("  : StructItem\n");
-	}
 }
 
 
@@ -609,11 +572,6 @@ void CheckVisitor::visitFunCallNode(FunCallNode *node)
 			msgFactory.newError(e_argument_unmatch, node->loc->first_line, node->loc->first_column);
 			return;
 		}
-	}
-
-	if (debug) {
-		printType(vType);
-		printf("  : FunCall\n");
 	}
 }
 
@@ -797,10 +755,6 @@ void CheckVisitor::visitAssignStmtNode(AssignStmtNode *node)
 		node->exp = getSimpleNode(expTy, node->exp->loc);
 	}
 
-	if (debug) {
-		printType(lvalTy);
-		printf("  : Assignment\n");
-	}
 }
 
 
@@ -884,7 +838,7 @@ void CheckVisitor::visitFuncDeclNode(FuncDeclNode *node)
 
 	if (debug) {
 		printType(vType);
-		printf("  : FuncDef\n");
+		printf("  : FuncDecl\n");
 	}
 }
 

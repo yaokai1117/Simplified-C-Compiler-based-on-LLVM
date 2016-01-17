@@ -33,6 +33,7 @@ extern void clearAstNodes();
 CompUnitNode *root; // AST's root, shared with yyparse()
 list<Node*> astNodes;
 bool errorFlag = false;
+bool typeDebugFlag = false;
 
 MsgFactory msgFactory;
 
@@ -50,6 +51,8 @@ int main(int argc, char** argv)
     // type check
     if (!errorFlag) {
     	CheckVisitor checkVisitor;
+    	if (typeDebugFlag)
+    		checkVisitor.setDebug();
     	root->accept(checkVisitor);
     }
 

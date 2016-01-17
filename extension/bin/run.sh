@@ -16,12 +16,11 @@ echo
 echo
 
 echo "Please input a number(1~6) to run a test, Ctrl-d to exit:"
-echo " 		1 for test1.c -- test if-else and while"
-echo " 		2 for test2.c -- test array"
-echo " 		3 for test3.c -- test function (function can have arguments)"
-echo " 		4 for test4.c -- test &&, ||, ! operators"
-echo " 		5 for quicksort.c -- a quick sort program"
-echo " 		6 for error.c -- test error handling"
+echo " 		1 for test1.c -- test struct type"
+echo " 		2 for test2.c -- test pointer type"
+echo " 		3 for test3.c -- test function pointer"
+echo " 		4 for sort.c  -- use different compare function to sort an array of struct pointers"
+echo " 		5 for type.c  -- print types"
 
 read choice
 
@@ -45,19 +44,13 @@ case $choice in
 		./test3
 		;;
 	4)
-		bin/compiler test/test4.c 
-		llc -filetype=obj test4.ll -o bin/test4.o
-		clang bin/test4.o bin/libexternfunc.so -o test4
-		./test4
+		bin/compiler test/sort.c 
+		llc -filetype=obj sort.ll -o bin/sort.o
+		clang bin/sort.o bin/libexternfunc.so -o sort
+		./sort
 		;;
 	5)
-		bin/compiler test/quicksort.c 
-		llc -filetype=obj quicksort.ll -o bin/quicksort.o
-		clang bin/quicksort.o bin/libexternfunc.so -o quicksort
-		./quicksort
-		;;
-	6)
-		bin/compiler test/error.c 
+		bin/compiler  -t test/type.c 
 		;;
 
 	*)

@@ -4,6 +4,8 @@
 #include "util.h"
 #include "global.h"
 
+extern bool typeDebugFlag;
+
 // use getopt_long to handle arguments
 // -h       show help
 // -v       show version
@@ -14,17 +16,19 @@ bool handle_opt(int argc, char** argv)
     int c;
     int version_flag = 0;
     int help_flag = 0;
+    int type_debug_flag = 0;
     struct option long_options[] =
     {
         {"version", no_argument, &version_flag, 'v'},
         {"help", no_argument, &help_flag, 'h'},
         {"dump", required_argument, NULL, 'd'},
+		{"type", no_argument, &type_debug_flag, 't'},
         {0, 0, 0, 0}
     };
     int option_index = 0;
     opterr = 0;
 
-    while ((c = getopt_long(argc, argv, ":hvo:d:", long_options, &option_index)) != -1) {
+    while ((c = getopt_long(argc, argv, ":hvto:d:", long_options, &option_index)) != -1) {
         switch (c)
         {
             case 0:
@@ -38,6 +42,9 @@ bool handle_opt(int argc, char** argv)
             case 'd':
                 dumpfile_name = optarg;
                 break;
+            case 't':
+            	type_debug_flag = 1;
+            	break;
             case '?':
                 printf("Unknown option -%c\n", optopt);
                 return false;
@@ -91,5 +98,7 @@ bool handle_opt(int argc, char** argv)
             return false;
         }
     }
+    if (type_debug_flag)
+    	typeDebugFlag = true;
     return true;
 }

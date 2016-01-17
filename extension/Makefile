@@ -76,6 +76,6 @@ clean:
 	rm -f src/lexer.cpp src/parser.cpp src/parser.output include/tok.h
 	rm -f *.png *.dot
 	rm *.ll 
-	rm test1 test2 test3 test4 quicksort 
+	rm test1 test2 test3 sort 
 	
 

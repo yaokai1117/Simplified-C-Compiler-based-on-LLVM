@@ -45,6 +45,8 @@ public:
 	virtual void enterFuncDefNode(FuncDefNode *node);
 	virtual void enterStructDefNode(StructDefNode *node);
 
+	void setDebug();
+
 private:
 
 	std::map<std::string, ValueTypeS> *symTableStack[32];
@@ -52,6 +54,7 @@ private:
 	int stackPtr;
 	std::map<std::string, std::map<std::string, ValueTypeS>* > structTable;
 
+	bool debug;
 	bool isGlobal;
 	ValueTypeS lookUpSym(std::string name);
 	void handleArrayType(ValueTypeS *vType);

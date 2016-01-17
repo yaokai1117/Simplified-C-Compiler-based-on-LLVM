@@ -29,5 +29,5 @@ void print_char(char c)
 
 void print_float(float f)
 {
-	printf("%f", f);
+	printf("%.2f", f);
 }

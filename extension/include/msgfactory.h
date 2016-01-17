@@ -33,7 +33,9 @@ enum MsgType {
 	e_function_arg_cannot_be_functon,
 	e_not_a_struct,
 	e_no_such_struct,
-	e_array_index_not_int
+	e_array_index_not_int,
+	e_does_not_have_address,
+	e_not_array_type
 };
 
 // base class of compiling message

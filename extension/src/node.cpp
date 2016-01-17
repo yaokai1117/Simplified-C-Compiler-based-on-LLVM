@@ -140,6 +140,11 @@ UnaryExpNode::~UnaryExpNode()
 
 void UnaryExpNode::accept(Visitor &v)
 {
+	// In some cases (such as code generation), the visiting order should be changed
+	if (v.orderChanged) {
+		v.visitUnaryExpNode(this);
+		return;
+	}
 	operand->accept(v);
 	v.visitUnaryExpNode(this);
 }

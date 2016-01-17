@@ -397,7 +397,6 @@ VarDecl: Type VarList SEMICOLON
 					for (std::list<Node*>::iterator it = ($2)->nodes.begin();
 							it != ($2)->nodes.end(); it++) {
 						setAtomType(&((*it)->valueTy), $1);
-						printf("\n");
 					}
 				
 					$$ = new VarDeclNode($2);

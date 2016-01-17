@@ -34,6 +34,8 @@ map<int, string> createMsgTable()
 	t[e_not_a_struct] = string("the operand of '.' must be struct type");
 	t[e_no_such_struct] = string("no such struct");
 	t[e_array_index_not_int] = string("the index of array should be int type");
+	t[e_does_not_have_address] = string("it doesn't have an address");
+	t[e_not_array_type] = string("'[ ]' operator can only be used in array type");
 	return t;
 }
 

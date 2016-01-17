@@ -47,11 +47,13 @@ int main(int argc, char** argv)
     yyin = infp;        // infp is initialized in handle_opt()
     yyparse();
 
+    // type check
     if (!errorFlag) {
     	CheckVisitor checkVisitor;
     	root->accept(checkVisitor);
     }
 
+    // dump DOT
     if (dumpfp != NULL && !errorFlag) {
         DumpDotVisitor dumpVisitor(dumpfp);
         root->accept(dumpVisitor);

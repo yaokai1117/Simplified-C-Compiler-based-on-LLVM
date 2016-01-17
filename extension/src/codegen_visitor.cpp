@@ -74,7 +74,10 @@ static Type *getLLVMVarType(ValueTypeS vType)
 	case PTR_TYPE:
 		return PointerType::get(getLLVMVarType(*vType.atom), 0);
 	case ARRAY_TYPE:
-		return ArrayType::get(getLLVMVarType(getArrayItemType(vType)), vType.base[0]);
+	{
+		Type *itemTy = getLLVMVarType(getArrayItemType(vType));
+		return ArrayType::get(itemTy, vType.base[0]);
+	}
 	case FUNC_TYPE:
 		{
 		std::vector<Type *> types;
@@ -82,11 +85,14 @@ static Type *getLLVMVarType(ValueTypeS vType)
 			std::list<Node *> nodes = vType.argv->nodes;
 			for (std::list<Node *>::iterator it = nodes.begin();
 					it != nodes.end(); ++it) {
-				types.push_back(getLLVMVarType((*it)->valueTy));
+				Type *argType = getLLVMVarType((*it)->valueTy);
+				if (argType->isArrayTy() || argType->isStructTy())
+					argType = PointerType::get(argType, 0);
+				types.push_back(argType);
 			}
 		}
 		return FunctionType::get(getLLVMVarType(*vType.atom), types, false);
-		}
+		}	// end case
 	default:
 		return nullptr;
 	}
@@ -283,6 +289,7 @@ void CodegenVisitor::visitBinaryExpNode(BinaryExpNode *node)
 		}
 	}
 
+	// type cast
 	if (vType.dstType != NO_TYPE && vType.dstType != vType.type) {
 		v = typeCast(vType, v);
 	}
@@ -293,30 +300,118 @@ void CodegenVisitor::visitBinaryExpNode(BinaryExpNode *node)
 
 void CodegenVisitor::visitUnaryExpNode(UnaryExpNode *node)
 {
-	Value *operandV = pending.back();
-	pending.pop_back();
-
-	if (operandV == 0) {
-		pending.insert(pending.end(), 0);
-		return;
-	}
-
-	Value *v;
+	Value *operandV;
+	Value *retV;
 
 	switch (node->op) {
 	case '+':
-		v = operandV;
+		node->operand->accept(*this);
+		operandV = pending.back();
+		pending.pop_back();
+		retV = operandV;
 		break;
 	case '-':
-		v = Builder.CreateNeg(operandV, "negtmp");
+		node->operand->accept(*this);
+		operandV = pending.back();
+		pending.pop_back();
+		retV = Builder.CreateNeg(operandV, "negtmp");
 		break;
 	case '&':
+	{
+		switch (node->operand->type) {
+		case ID_AST:
+		{
+			IdNode *operandNode = dynamic_cast<IdNode*>(node->operand);
+			std::string nameStr = *operandNode->name;
+			retV = lookUp(nameStr);
+			break;
+		}	// end case
+		case ARRAY_ITEM_AST:
+		{
+			ArrayItemNode *operandNode = dynamic_cast<ArrayItemNode*>(node->operand);
+
+			int size = operandNode->index->nodes.size();
+
+			operandNode->array->accept(*this);
+			operandNode->index->accept(*this);
+
+			vector<Value*> indexVs = getValuesFromStack(size);
+			std::vector<Value *> idxList;
+			idxList.push_back(ConstantInt::get(getGlobalContext(), APInt(32, 0, true)));
+			for (int i = 0; i < size; i++) {
+				Value *sextIndex = Builder.CreateSExt(indexVs[i], Type::getInt64Ty(getGlobalContext()));
+				idxList.push_back(sextIndex);
+			}
+
+			Value *arrayPtr = pending.back();
+			pending.pop_back();
+
+			retV = Builder.CreateGEP(arrayPtr, idxList, "array_ptr");
+			break;
+		}	// end case
+		case UNARY_EXP_AST:
+		{
+			UnaryExpNode *operandNode = dynamic_cast<UnaryExpNode*>(node->operand);
+			operandNode->operand->accept(*this);
+			retV = pending.back();
+			pending.pop_back();
+			break;
+		}	// end case
+		case STRUCT_ITEM_AST:
+		{
+			StructItemNode *operandNode = dynamic_cast<StructItemNode*>(node->operand);
+			operandNode->stru->accept(*this);
+			Value *structPtr = pending.back();
+			pending.pop_back();
+
+			std::string structName;
+			if (operandNode->isPointer)
+				structName = *operandNode->stru->valueTy.atom->structName;
+			else
+				structName = *operandNode->stru->valueTy.structName;
+
+			std::map<std::string, int> &offsetMap = *structOffsetTable[structName];
+			int offset = offsetMap[*operandNode->itemName];
+			std::vector<Value *> idxV;
+			idxV.push_back(ConstantInt::get(getGlobalContext(), APInt(32, 0, true)));
+			idxV.push_back(ConstantInt::get(getGlobalContext(), APInt(32, offset, true)));
+			retV = Builder.CreateGEP(structPtr, idxV, "struct_item");
+
+			break;
+		}	// end case
+		default:
+			break;
+		}	// end inner switch
+		break;
+	}
+	case '*':
+	{
+		node->operand->accept(*this);
+		operandV = pending.back();
+		pending.pop_back();
+		Type *type = ((AllocaInst*)operandV)->getAllocatedType();
+		if (type->isFunctionTy())
+			retV = operandV;
+		else if (type->isArrayTy())
+			retV = operandV;
+		else if (type->isStructTy())
+			retV = operandV;
+		else
+			retV = Builder.CreateLoad(operandV, "deref");
+		break;
+	}
 	default:
-		v = 0;
+		retV = 0;
 		break;
 	}
 
-	pending.insert(pending.end(), v);
+	// type cast
+	ValueTypeS vType = node->valueTy;
+	if (vType.dstType != NO_TYPE && vType.dstType != vType.type) {
+		retV = typeCast(vType, retV);
+	}
+
+	pending.insert(pending.end(), retV);
 }
 
 
@@ -353,6 +448,7 @@ void CodegenVisitor::visitIdNode(IdNode *node)
 		}
 	}
 
+	// type cast
 	ValueTypeS vType = node->valueTy;
 	if (vType.dstType != NO_TYPE && vType.dstType != vType.type)
 		v = typeCast(vType, v);
@@ -379,34 +475,44 @@ void CodegenVisitor::visitArrayItemNode(ArrayItemNode *node)
 
 	Value *arrayItemPtr = Builder.CreateGEP(arrayPtr, idxList, "array_ptr");
 	retV = Builder.CreateLoad(arrayItemPtr, "array_item");
+
+	// type cast
+	ValueTypeS vType = node->valueTy;
+	if (vType.dstType != NO_TYPE && vType.dstType != vType.type) {
+		retV = typeCast(vType, retV);
+	}
+
 	pending.insert(pending.end(), retV);
 }
 
 
 void CodegenVisitor::visitStructItemNode(StructItemNode *node)
 {
-	// struct.item
-	if (!node->isPointer) {
-		Value *structPtr = pending.back();
-		pending.pop_back();
+	Value *structPtr = pending.back();
+	pending.pop_back();
 
-		std::string structName = *node->stru->valueTy.structName;
+	std::string structName;
+	if (node->isPointer)
+		structName = *node->stru->valueTy.atom->structName;
+	else
+		structName = *node->stru->valueTy.structName;
 
-		std::map<std::string, int> &offsetMap = *structOffsetTable[structName];
-		int offset = offsetMap[*node->itemName];
-		std::vector<Value *> idxV;
-		idxV.push_back(ConstantInt::get(getGlobalContext(), APInt(32, 0, true)));
-		idxV.push_back(ConstantInt::get(getGlobalContext(), APInt(32, offset, true)));
-		Value *structItemPtr = Builder.CreateGEP(structPtr, idxV, "struct_item");
+	std::map<std::string, int> &offsetMap = *structOffsetTable[structName];
+	int offset = offsetMap[*node->itemName];
+	std::vector<Value *> idxV;
+	idxV.push_back(ConstantInt::get(getGlobalContext(), APInt(32, 0, true)));
+	idxV.push_back(ConstantInt::get(getGlobalContext(), APInt(32, offset, true)));
+	Value *structItemPtr = Builder.CreateGEP(structPtr, idxV, "struct_item");
 
-		Value *retV = Builder.CreateLoad(structItemPtr, false);
+	Value *retV = Builder.CreateLoad(structItemPtr, false);
 
-		pending.insert(pending.end(), retV);
+	// type cast
+	ValueTypeS vType = node->valueTy;
+	if (vType.dstType != NO_TYPE && vType.dstType != vType.type) {
+		retV = typeCast(vType, retV);
 	}
-	// structPtr->item
-	else {
 
-	}
+	pending.insert(pending.end(), retV);
 }
 
 
@@ -424,6 +530,13 @@ void CodegenVisitor::visitFunCallNode(FunCallNode *node)
 	pending.pop_back();
 
 	Value *retV = Builder.CreateCall(calleeF, argsV);
+
+	// type cast
+	ValueTypeS vType = node->valueTy;
+	if (vType.dstType != NO_TYPE && vType.dstType != vType.type) {
+		retV = typeCast(vType, retV);
+	}
+
 	pending.insert(pending.end(), retV);
 }
 
@@ -446,8 +559,6 @@ void CodegenVisitor::visitIdVarDefNode(IdVarDefNode *node)
 		if (node->isAssigned) {
 			val = pending.back();
 			pending.pop_back();
-			if (val == 0)
-				return;
 
 			gVar->setInitializer((Constant*)val);
 		}
@@ -472,8 +583,9 @@ void CodegenVisitor::visitIdVarDefNode(IdVarDefNode *node)
 		if (node->isAssigned) {
 			val = pending.back();
 			pending.pop_back();
-			if (val == 0)
-				return;
+			if (node->value->valueTy.type == STRUCT_TYPE)
+				val = Builder.CreateLoad(val);
+
 			Builder.CreateStore(val, variable);
 		}
 
@@ -616,8 +728,7 @@ void CodegenVisitor::visitAssignStmtNode(AssignStmtNode *node)
 
 		// if this id is a struct
 		if (vType.type == STRUCT_TYPE) {
-			// no time to support this...sad
-			break;
+			expV = Builder.CreateLoad(expV);
 		}
 
 		// id is atom type
@@ -652,29 +763,36 @@ void CodegenVisitor::visitAssignStmtNode(AssignStmtNode *node)
 	case STRUCT_ITEM_AST:
 	{
 		StructItemNode *lval = dynamic_cast<StructItemNode*>(node->lval);
-		if (!lval->isPointer) {
-			lval->stru->accept(*this);
-			Value *structPtr = pending.back();
-			pending.pop_back();
+		lval->stru->accept(*this);
+		Value *structPtr = pending.back();
+		pending.pop_back();
 
-			std::string structName = *lval->stru->valueTy.structName;
+		std::string structName;
+		if (lval->isPointer)
+			structName = *lval->stru->valueTy.atom->structName;
+		else
+			structName = *lval->stru->valueTy.structName;
 
-			std::map<std::string, int> &offsetMap = *structOffsetTable[structName];
-			int offset = offsetMap[*lval->itemName];
-			std::vector<Value *> idxV;
-			idxV.push_back(ConstantInt::get(getGlobalContext(), APInt(32, 0, true)));
-			idxV.push_back(ConstantInt::get(getGlobalContext(), APInt(32, offset, true)));
-			Value *structItemPtr = Builder.CreateGEP(structPtr, idxV, "struct_item");
+		std::map<std::string, int> &offsetMap = *structOffsetTable[structName];
+		int offset = offsetMap[*lval->itemName];
+		std::vector<Value *> idxV;
+		idxV.push_back(ConstantInt::get(getGlobalContext(), APInt(32, 0, true)));
+		idxV.push_back(ConstantInt::get(getGlobalContext(), APInt(32, offset, true)));
+		Value *structItemPtr = Builder.CreateGEP(structPtr, idxV, "struct_item");
 
-			Builder.CreateStore(expV, structItemPtr);
-		}
-		else {
-
-		}
+		Builder.CreateStore(expV, structItemPtr);
 		break;
 	}
 	case UNARY_EXP_AST:
+	{
+		UnaryExpNode *lval = dynamic_cast<UnaryExpNode*>(node->lval);
+		lval->operand->accept(*this);
+		Value *ptrV = pending.back();
+		pending.pop_back();
+
+		Builder.CreateStore(expV, ptrV);
 		break;
+	}
 	default:
 		break;
 	}
@@ -780,7 +898,7 @@ void CodegenVisitor::visitCondNode(CondNode *node)
 
 	if (rValue == 0 || lValue == 0)
 		retV = 0;
-	if (node->lhs->valueTy.type == INT_TYPE) {
+	if (node->lhs->valueTy.type != FLOAT_TYPE) {
 		switch (op) {
 		case LT_OP:
 			retV = Builder.CreateICmpSLT(lValue, rValue, "ltcmp");
@@ -967,11 +1085,14 @@ void CodegenVisitor::visitFuncDefNode(FuncDefNode *node)
 	funcEndBB = BasicBlock::Create(getGlobalContext(), "end_function");
 
 	// create an alloca for return value
-	returnValue = Builder.CreateAlloca(Type::getInt32Ty(getGlobalContext()), 0, "return_value");
+	ValueTypeS retTy = *node->decl->valueTy.atom;
+	if (retTy.type == VOID_TYPE)
+		retTy.type = INT_TYPE;
+	returnValue = Builder.CreateAlloca(getLLVMVarType(retTy), 0, "return_value");
 
 	// create an alloca for each argument
 	for (Function::arg_iterator aIt = F->arg_begin(); aIt != F->arg_end(); aIt++) {
-		AllocaInst *alloca = Builder.CreateAlloca(Type::getInt32Ty(getGlobalContext()), 0, aIt->getName());
+		AllocaInst *alloca = Builder.CreateAlloca(aIt->getType(), 0, aIt->getName());
 		Builder.CreateStore(aIt, alloca);
 		LocalVariables[aIt->getName()] = alloca;
 	}

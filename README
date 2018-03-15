@@ -1,8 +1,3 @@
-This repository is for labs and projects of my Principle and Techniques of Compilers course.
-
-Building a C1 compiler now.
-
-
-author: Yao Kao  yaokai@mail.ustc.edu.cn
-
-2015.11.13
+# Project of my Compiler Course
+A compiler for a simplified C language based on LLVM backend, supported features include structures, pointers, function pointers and basic typecheck.
+The final version of my compiler is under **extension** folder.
